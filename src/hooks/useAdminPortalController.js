@@ -1,0 +1,772 @@
+import { startTransition, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
+import { ApiError, apiRequest, getStoredAccessToken, setStoredAccessToken, uploadMediaFile } from '../api'
+import { readRoute } from '../app/router'
+import { adminAuthCopy, adminNavItems, adminShellCopy } from '../adminContent'
+import { emptyProfile, flattenCategories, normalizeProfile, toText } from '../helpers'
+import {
+  buildAdminStats,
+  buildModerationBuckets,
+  buildModerationQueue,
+  buildVendorInsights,
+  getModerationToast,
+  LOADING_COPY,
+  matchesModerationItem,
+  matchesVendorInsight,
+  MODERATION_FILTERS,
+  normalizeVendorKey,
+  PAGE_COPY,
+  readModerationState,
+  writeModerationState,
+} from './adminModel'
+
+const MAX_CATALOG_PRODUCTS = 800
+
+export function useAdminPortalController() {
+  const [route, setRoute] = useState(() => readRoute())
+  const [accessToken, setAccessToken] = useState(() => getStoredAccessToken())
+  const [sessionStatus, setSessionStatus] = useState('checking')
+  const [authMode, setAuthMode] = useState('login')
+  const [authForm, setAuthForm] = useState({ email: '', password: '', inviteToken: '' })
+  const [profileForm, setProfileForm] = useState(() => ({ ...emptyProfile }))
+  const [categories, setCategories] = useState([])
+  const [platformProducts, setPlatformProducts] = useState([])
+  const [reviewDisputes, setReviewDisputes] = useState([])
+  const [reviewReports, setReviewReports] = useState([])
+  const [paymentTopUps, setPaymentTopUps] = useState([])
+  const [moderationSearch, setModerationSearch] = useState('')
+  const [moderationFilter, setModerationFilter] = useState('attention')
+  const [vendorSearch, setVendorSearch] = useState('')
+  const [moderationState, setModerationState] = useState(readModerationState)
+  const [busyKeys, setBusyKeys] = useState({})
+  const [toasts, setToasts] = useState([])
+  const toastIdRef = useRef(0)
+
+  const pageCopy = PAGE_COPY[route.page] || PAGE_COPY.notFound
+  const isAuthorized = Boolean(accessToken)
+
+  const deferredModerationSearch = useDeferredValue(moderationSearch)
+  const deferredVendorSearch = useDeferredValue(vendorSearch)
+
+  const categoryOptions = useMemo(() => flattenCategories(categories), [categories])
+  const categoryLabelById = useMemo(
+    () =>
+      categoryOptions.reduce((accumulator, category) => {
+        accumulator[category.value] = category.label.trim()
+        return accumulator
+      }, {}),
+    [categoryOptions],
+  )
+  const moderationQueue = useMemo(
+    () => buildModerationQueue(platformProducts, moderationState, categoryLabelById),
+    [platformProducts, moderationState, categoryLabelById],
+  )
+  const visibleModerationQueue = useMemo(
+    () => moderationQueue.filter((item) => matchesModerationItem(item, deferredModerationSearch, moderationFilter)),
+    [moderationQueue, deferredModerationSearch, moderationFilter],
+  )
+  const stats = useMemo(() => buildAdminStats(platformProducts, moderationQueue), [platformProducts, moderationQueue])
+  const moderationBuckets = useMemo(() => buildModerationBuckets(stats), [stats])
+  const attentionProducts = useMemo(() => moderationQueue.filter((item) => item.attention).slice(0, 6), [moderationQueue])
+  const vendorInsights = useMemo(() => buildVendorInsights(moderationQueue), [moderationQueue])
+  const visibleVendorInsights = useMemo(
+    () => vendorInsights.filter((item) => matchesVendorInsight(item, deferredVendorSearch)),
+    [vendorInsights, deferredVendorSearch],
+  )
+  const hotVendors = useMemo(() => vendorInsights.slice(0, 6), [vendorInsights])
+  const routeModerationItem = useMemo(
+    () => moderationQueue.find((item) => item.productId === toText(route.productId)) || null,
+    [moderationQueue, route.productId],
+  )
+  const routeVendorInsight = useMemo(
+    () => vendorInsights.find((item) => item.vendorId === normalizeVendorKey(route.vendorId)) || null,
+    [route.vendorId, vendorInsights],
+  )
+
+  const handleBootstrapEffect = useEffectEvent(() => {
+    void bootstrap()
+  })
+
+  useEffect(() => {
+    handleBootstrapEffect()
+  }, [])
+
+  useEffect(() => {
+    const syncRoute = () => {
+      startTransition(() => {
+        setRoute(readRoute())
+      })
+    }
+
+    window.addEventListener('popstate', syncRoute)
+    return () => window.removeEventListener('popstate', syncRoute)
+  }, [])
+
+  useEffect(() => {
+    document.title = `${pageCopy.title} | Platform Admin`
+  }, [pageCopy.title])
+
+  useEffect(() => {
+    writeModerationState(moderationState)
+  }, [moderationState])
+
+  async function bootstrap() {
+    await Promise.allSettled([loadCategories(), restoreSession()])
+  }
+
+  async function restoreSession() {
+    const stored = getStoredAccessToken()
+
+    if (!stored) {
+      await refreshSession(true)
+      return
+    }
+
+    try {
+      storeAccessToken(stored)
+      await hydratePrivate(stored)
+    } catch (error) {
+      clearAuth()
+
+      if (!(error instanceof ApiError && error.status === 401)) {
+        handleError(error)
+      }
+
+      await refreshSession(true)
+    }
+  }
+
+  async function loadCategories() {
+    try {
+      const response = await apiRequest('/api/v1/catalog/categories?include_children=true')
+      startTransition(() => {
+        setCategories(response.categories || [])
+      })
+    } catch (error) {
+      handleError(error)
+    }
+  }
+
+  async function hydratePrivate(token) {
+    const profile = await fetchProfile(token)
+    startTransition(() => {
+      setProfileForm(profile)
+      setSessionStatus('active')
+    })
+    await Promise.allSettled([loadPlatformProducts(token), loadReviewDisputes(token), loadReviewReports(token), loadPaymentTopUps(token)])
+  }
+
+  async function fetchProfile(token) {
+    try {
+      const response = await apiRequest('/api/v1/users/me', { token })
+      return normalizeProfile(response)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return { ...emptyProfile }
+      }
+
+      throw error
+    }
+  }
+
+  async function loadPlatformProducts(token = accessToken) {
+    setBusy('catalog', true)
+
+    try {
+      const allProducts = []
+      let nextPageToken = ''
+
+      for (;;) {
+        const params = new URLSearchParams({ page_size: '80' })
+
+        if (nextPageToken) {
+          params.set('page_token', nextPageToken)
+        }
+
+        const response = await apiRequest(`/api/v1/catalog/products?${params.toString()}`, { token })
+        allProducts.push(...(response.products || []))
+
+        if (!response.next_page_token || allProducts.length >= MAX_CATALOG_PRODUCTS) {
+          break
+        }
+
+        nextPageToken = toText(response.next_page_token)
+      }
+
+      startTransition(() => {
+        setPlatformProducts(allProducts)
+      })
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy('catalog', false)
+    }
+  }
+
+  async function loadReviewDisputes(token = accessToken) {
+    setBusy('reviewDisputes', true)
+
+    try {
+      const response = await apiRequest('/api/v1/admin/reviews/disputes', { token })
+      startTransition(() => {
+        setReviewDisputes(response.reviews || [])
+      })
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy('reviewDisputes', false)
+    }
+  }
+
+  async function loadReviewReports(token = accessToken) {
+    setBusy('reviewReports', true)
+
+    try {
+      const response = await apiRequest('/api/v1/admin/reviews/reports', { token })
+      startTransition(() => {
+        setReviewReports(response.items || [])
+      })
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy('reviewReports', false)
+    }
+  }
+
+  async function loadPaymentTopUps(token = accessToken) {
+    setBusy('paymentTopUps', true)
+
+    try {
+      const response = await apiRequest('/api/v1/admin/balance/top-ups?currency_code=1000&provider_type=acquiring&status=pending&limit=100&offset=0', { token })
+      startTransition(() => {
+        setPaymentTopUps(response.topUps || response.top_ups || [])
+      })
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy('paymentTopUps', false)
+    }
+  }
+
+  async function ensureAuthorized() {
+    if (accessToken) {
+      return accessToken
+    }
+
+    const refreshedToken = await refreshSession(true)
+    if (refreshedToken) {
+      return refreshedToken
+    }
+
+    throw new ApiError('Нужна авторизация.', 401)
+  }
+
+  async function authedRequest(path, options = {}) {
+    const token = options.token || (await ensureAuthorized())
+    return apiRequest(path, { ...options, token })
+  }
+
+  async function handleAuthSubmit(event) {
+    event.preventDefault()
+    setBusy('auth', true)
+
+    try {
+      const email = authForm.email.trim()
+      const password = authForm.password
+
+      if (!email || !password) {
+        throw new Error('Введите email и пароль.')
+      }
+
+      if (authMode === 'register') {
+        const inviteToken = authForm.inviteToken.trim()
+
+        if (!inviteToken) {
+          throw new Error('Введите invite token.')
+        }
+
+        await apiRequest('/api/v1/admin/auth/register', {
+          method: 'POST',
+          body: { email, password, invite_token: inviteToken },
+        })
+      }
+
+      const response = await apiRequest('/api/v1/admin/auth/login', {
+        method: 'POST',
+        body: { email, password },
+      })
+
+      const nextToken = getAccessTokenFromResponse(response, 'Не удалось выполнить вход. Попробуйте еще раз.', 'login')
+      storeAccessToken(nextToken)
+      setAuthForm((current) => ({ ...current, password: '', inviteToken: '' }))
+      await hydratePrivate(nextToken)
+      notify(authMode === 'register' ? 'Администратор зарегистрирован, вход выполнен.' : 'Сессия открыта.', 'success')
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy('auth', false)
+    }
+  }
+
+  async function refreshSession(silent = false) {
+    setBusy('refresh', true)
+
+    try {
+      const response = await apiRequest('/api/v1/admin/auth/refresh', { method: 'POST' })
+      const nextToken = getAccessTokenFromResponse(response, 'Не удалось обновить сессию.', 'refresh')
+      storeAccessToken(nextToken)
+      await hydratePrivate(nextToken)
+
+      if (!silent) {
+        notify('Сессия обновлена.', 'success')
+      }
+
+      return nextToken
+    } catch (error) {
+      clearAuth()
+
+      if (!silent && !(error instanceof ApiError && error.status === 401)) {
+        handleError(error)
+      }
+
+      if (!silent && error instanceof ApiError && error.status === 401) {
+        notify('Сессия истекла. Войдите снова.', 'warning')
+      }
+
+      return ''
+    } finally {
+      setBusy('refresh', false)
+    }
+  }
+
+  async function handleLogout() {
+    setBusy('logout', true)
+
+    try {
+      await apiRequest('/api/v1/admin/auth/logout', { method: 'POST' })
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 401)) {
+        handleError(error)
+      }
+    } finally {
+      clearAuth()
+      setBusy('logout', false)
+    }
+
+    notify('Вы вышли из консоли.', 'info')
+  }
+
+  async function handleProfileSubmit(event) {
+    event.preventDefault()
+    setBusy('profile', true)
+
+    try {
+      const response = await authedRequest('/api/v1/users/me', {
+        method: 'PATCH',
+        body: {
+          first_name: profileForm.firstName.trim(),
+          last_name: profileForm.lastName.trim(),
+          avatar_url: profileForm.avatarUrl.trim(),
+        },
+      })
+
+      startTransition(() => {
+        setProfileForm(normalizeProfile(response))
+      })
+      notify('Профиль сохранен.', 'success')
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy('profile', false)
+    }
+  }
+
+  async function handleProfileAvatarUpload(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    setBusy('mediaAvatar', true)
+
+    try {
+      const token = await ensureAuthorized()
+      const response = await uploadMediaFile(file, { token, directory: 'avatars/admins' })
+      const fileUrl = toText(response?.fileUrl ?? response?.file_url).trim()
+
+      if (!fileUrl) {
+        throw new Error('Media service не вернул file_url.')
+      }
+
+      startTransition(() => {
+        setProfileForm((current) => ({ ...current, avatarUrl: fileUrl }))
+      })
+      notify('Аватар загружен. Сохраните профиль, чтобы применить ссылку.', 'success')
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy('mediaAvatar', false)
+    }
+  }
+
+  async function createCategory({ name: rawName, parentId: rawParentId }) {
+    setBusy('categoryCreate', true)
+
+    try {
+      const name = toText(rawName).trim()
+      const parentId = toText(rawParentId).trim()
+
+      if (!name) {
+        throw new Error('Введите название категории.')
+      }
+
+      const body = { name }
+      if (parentId) {
+        const numericParentId = Number(parentId)
+        if (!Number.isSafeInteger(numericParentId) || numericParentId <= 0) {
+          throw new Error('Выберите корректную родительскую категорию.')
+        }
+
+        body.parent_id = numericParentId
+      }
+
+      await authedRequest('/api/v1/admin/catalog/categories', {
+        method: 'POST',
+        body,
+      })
+
+      await loadCategories()
+      notify('Категория добавлена.', 'success')
+      return true
+    } catch (error) {
+      handleError(error)
+      return false
+    } finally {
+      setBusy('categoryCreate', false)
+    }
+  }
+
+  async function deleteCategory(categoryId) {
+    const normalizedCategoryId = toText(categoryId).trim()
+    if (!normalizedCategoryId) {
+      return
+    }
+
+    setBusy(`categoryDelete:${normalizedCategoryId}`, true)
+
+    try {
+      await authedRequest(`/api/v1/admin/catalog/categories/${normalizedCategoryId}`, {
+        method: 'DELETE',
+      })
+
+      await loadCategories()
+      notify('Категория удалена.', 'success')
+      return true
+    } catch (error) {
+      handleError(error)
+      return false
+    } finally {
+      setBusy(`categoryDelete:${normalizedCategoryId}`, false)
+    }
+  }
+
+  function setModerationDecision(productId, decision) {
+    const normalizedProductId = toText(productId)
+
+    setModerationState((current) => ({
+      ...current,
+      [normalizedProductId]: {
+        note: toText(current[normalizedProductId]?.note),
+        status: decision,
+        updatedAt: new Date().toISOString(),
+      },
+    }))
+
+    notify(getModerationToast(decision), decision === 'rejected' ? 'warning' : 'success')
+  }
+
+  function setModerationNote(productId, note) {
+    const normalizedProductId = toText(productId)
+
+    setModerationState((current) => ({
+      ...current,
+      [normalizedProductId]: {
+        note: toText(note),
+        status: current[normalizedProductId]?.status || 'pending',
+        updatedAt: new Date().toISOString(),
+      },
+    }))
+  }
+
+  function openModeration() {
+    navigate('/moderation')
+  }
+
+  function openModerationProduct(productId) {
+    navigate(`/moderation/${encodeURIComponent(toText(productId))}`)
+  }
+
+  function openVendorProfile(vendorId) {
+    const normalizedVendorId = normalizeVendorKey(vendorId)
+    navigate(`/vendors/${encodeURIComponent(normalizedVendorId)}`)
+  }
+
+  async function resolveReviewDispute(review, decision) {
+    const reviewId = toText(review?.id)
+    const disputeId = toText(review?.dispute?.id)
+    if (!reviewId || !disputeId) {
+      notify('Не удалось определить спорный отзыв.', 'warning')
+      return
+    }
+
+    setBusy(`reviewResolve-${reviewId}`, true)
+
+    try {
+      const response = await authedRequest(`/api/v1/admin/reviews/${encodeURIComponent(reviewId)}/disputes/${encodeURIComponent(disputeId)}/resolve`, {
+        method: 'POST',
+        body: { decision, comment: '' },
+      })
+      startTransition(() => {
+        setReviewDisputes((current) => current.filter((item) => toText(item?.id) !== reviewId))
+      })
+      notify(decision === 'accepted' ? 'Отзыв исключен из рейтинга.' : 'Спор отклонен.', 'success')
+      return response
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy(`reviewResolve-${reviewId}`, false)
+    }
+  }
+
+  async function deleteReview(reviewId) {
+    const normalizedReviewId = toText(reviewId)
+    if (!normalizedReviewId) {
+      return
+    }
+
+    setBusy(`reviewDelete-${normalizedReviewId}`, true)
+
+    try {
+      await authedRequest(`/api/v1/admin/reviews/${encodeURIComponent(normalizedReviewId)}`, {
+        method: 'DELETE',
+      })
+      startTransition(() => {
+        setReviewDisputes((current) => current.filter((item) => toText(item?.id) !== normalizedReviewId))
+        setReviewReports((current) => current.filter((item) => toText(item?.review?.id) !== normalizedReviewId))
+      })
+      notify('Отзыв удален.', 'success')
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy(`reviewDelete-${normalizedReviewId}`, false)
+    }
+  }
+
+  async function confirmPaymentTopUp(externalId) {
+    const normalizedExternalId = toText(externalId).trim()
+    if (!normalizedExternalId) {
+      notify('Не удалось определить платеж.', 'warning')
+      return
+    }
+
+    setBusy(`paymentConfirm-${normalizedExternalId}`, true)
+
+    try {
+      await authedRequest(`/api/v1/admin/balance/top-ups/${encodeURIComponent(normalizedExternalId)}/confirm`, {
+        method: 'POST',
+      })
+      startTransition(() => {
+        setPaymentTopUps((current) => current.filter((item) => toText(item?.externalId ?? item?.external_id) !== normalizedExternalId))
+      })
+      notify('Платеж подтвержден.', 'success')
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy(`paymentConfirm-${normalizedExternalId}`, false)
+    }
+  }
+
+  function navigate(path) {
+    if (`${window.location.pathname}${window.location.search}` === path) {
+      return
+    }
+
+    window.history.pushState({}, '', path)
+    startTransition(() => {
+      setRoute(readRoute())
+    })
+  }
+
+  function storeAccessToken(token) {
+    setStoredAccessToken(token)
+    setAccessToken(token)
+  }
+
+  function clearAuth() {
+    storeAccessToken('')
+    setSessionStatus('guest')
+    startTransition(() => {
+      setProfileForm({ ...emptyProfile, email: authForm.email.trim() })
+      setPlatformProducts([])
+      setReviewDisputes([])
+      setReviewReports([])
+      setPaymentTopUps([])
+    })
+  }
+
+  function setBusy(key, value) {
+    setBusyKeys((current) => {
+      const next = { ...current }
+
+      if (value) {
+        next[key] = true
+      } else {
+        delete next[key]
+      }
+
+      return next
+    })
+  }
+
+  function notify(message, type = 'info') {
+    const id = toastIdRef.current + 1
+    toastIdRef.current = id
+    setToasts((current) => [...current, { id, message, type }])
+
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id))
+    }, 3200)
+  }
+
+  function handleError(error) {
+    if (error instanceof ApiError) {
+      notify(error.message, error.status >= 500 ? 'error' : 'warning')
+      return
+    }
+
+    if (error instanceof Error) {
+      notify(error.message, 'warning')
+      return
+    }
+
+    notify('Произошла непредвиденная ошибка.', 'error')
+  }
+
+  return {
+    route,
+    isAuthorized,
+    sessionStatus,
+    toasts,
+    loadingCopy: LOADING_COPY,
+    authProps: {
+      authMode,
+      authForm,
+      busyKeys,
+      copy: adminAuthCopy,
+      onAuthModeChange: setAuthMode,
+      onAuthFormChange: setAuthForm,
+      onAuthSubmit: handleAuthSubmit,
+    },
+    shellProps: {
+      sidebar: {
+        navItems: adminNavItems,
+        currentPage: route.page === 'vendorProfile' ? 'vendors' : route.page === 'moderationProduct' ? 'moderation' : route.page,
+        onNavigate: navigate,
+        brandBadge: adminShellCopy.brandBadge,
+        brandTitle: adminShellCopy.brandTitle,
+        brandSubtitle: adminShellCopy.brandSubtitle,
+        logoutLabel: adminShellCopy.logoutLabel,
+        busyKeys,
+        onLogout: handleLogout,
+      },
+    },
+    pageProps: {
+      dashboard: {
+        stats,
+        moderationBuckets,
+        hotVendors,
+        attentionProducts,
+        onOpenModeration: openModeration,
+        onOpenVendors: () => navigate('/vendors'),
+        onInspectProduct: openModerationProduct,
+        onInspectVendor: openVendorProfile,
+      },
+      moderation: {
+        queue: visibleModerationQueue,
+        filters: MODERATION_FILTERS,
+        search: moderationSearch,
+        filter: moderationFilter,
+        categoryLabelById,
+        onSearchChange: setModerationSearch,
+        onFilterChange: setModerationFilter,
+        onOpenProduct: openModerationProduct,
+      },
+      reviews: {
+        reviews: reviewDisputes,
+        reports: reviewReports,
+        busyKeys,
+        onReload: () => Promise.allSettled([loadReviewDisputes(), loadReviewReports()]),
+        onAccept: (review) => resolveReviewDispute(review, 'accepted'),
+        onReject: (review) => resolveReviewDispute(review, 'rejected'),
+        onDelete: deleteReview,
+      },
+      payments: {
+        topUps: paymentTopUps,
+        busyKeys,
+        onReload: () => loadPaymentTopUps(),
+        onConfirm: confirmPaymentTopUp,
+      },
+      moderationProduct: {
+        item: routeModerationItem,
+        productId: route.productId,
+        categoryLabelById,
+        onBack: () => navigate('/moderation'),
+        onSetDecision: setModerationDecision,
+        onChangeNote: setModerationNote,
+        onOpenVendor: openVendorProfile,
+      },
+      categories: {
+        categories,
+        categoryOptions,
+        busyKeys,
+        onCreateCategory: createCategory,
+        onDeleteCategory: deleteCategory,
+      },
+      vendors: {
+        vendors: visibleVendorInsights,
+        search: vendorSearch,
+        onSearchChange: setVendorSearch,
+        onOpenVendor: openVendorProfile,
+      },
+      vendorProfile: {
+        vendor: routeVendorInsight,
+        vendorId: route.vendorId,
+        onBack: () => navigate('/vendors'),
+        onInspectProduct: openModerationProduct,
+      },
+      profile: {
+        profileForm,
+        busyKeys,
+        onProfileChange: setProfileForm,
+        onProfileSubmit: handleProfileSubmit,
+        onAvatarUpload: handleProfileAvatarUpload,
+      },
+      notFound: {
+        title: pageCopy.title,
+        buttonLabel: pageCopy.buttonLabel,
+        onGoDashboard: () => navigate('/'),
+      },
+    },
+  }
+}
+
+function getAccessTokenFromResponse(response, failureMessage, operation) {
+  const accessToken = toText(response?.accessToken ?? response?.access_token).trim()
+  if (accessToken) {
+    return accessToken
+  }
+
+  console.error(`Missing access token in ${operation} response.`, response)
+  throw new Error(failureMessage)
+}

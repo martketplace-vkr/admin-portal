@@ -1,0 +1,29 @@
+serviceName: admin-portal
+namespace: martketplace-vkr
+
+replicas: 1
+
+containerPort: 80
+
+service:
+  type: ClusterIP
+  port: 80
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 50m
+    memory: 32Mi
+
+ingress:
+  enabled: true
+  host: marketplace-admin.vitalmeuble.online
+  port: 80
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    - hosts:
+        - marketplace-admin.vitalmeuble.online
+      secretName: marketplace-admin-vitalmeuble-tls
