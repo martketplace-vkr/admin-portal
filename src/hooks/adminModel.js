@@ -75,7 +75,6 @@ export const PAGE_COPY = {
 
 export const LOADING_COPY = {
   eyebrow: 'platform admin',
-  title: 'Собираем операционный центр',
   description: 'Проверяем сессию сотрудника, профиль и платформенный каталог.',
 }
 
