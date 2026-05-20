@@ -5,6 +5,7 @@ import { useAdminPortalController } from './hooks/useAdminPortalController'
 import { AdminCategoriesPage } from './pages/AdminCategoriesPage'
 import { AdminDashboardPage } from './pages/AdminDashboardPage'
 import { AdminModerationPage, AdminModerationProductPage } from './pages/AdminModerationPage'
+import { AdminOrdersPage } from './pages/AdminOrdersPage'
 import { AdminPaymentsPage } from './pages/AdminPaymentsPage'
 import { AdminProfilePage } from './pages/AdminProfilePage'
 import { AdminVendorProfilePage, AdminVendorsPage } from './pages/AdminVendorsPage'
@@ -57,6 +58,10 @@ function renderCurrentPage(controller) {
 
   if (controller.route.page === 'payments') {
     return <AdminPaymentsPage {...controller.pageProps.payments} />
+  }
+
+  if (controller.route.page === 'orders') {
+    return <AdminOrdersPage {...controller.pageProps.orders} />
   }
 
   if (controller.route.page === 'dashboard') {

@@ -46,6 +46,10 @@ export const PAGE_COPY = {
     title: 'Платежи',
     description: 'Подтверждение тестовых RUB пополнений через mock-провайдера.',
   },
+  orders: {
+    title: 'Заказы',
+    description: 'Статусы оплаты и выполнения заказов.',
+  },
   categories: {
     title: 'Категории',
     description: 'Создание корневых категорий и подкатегорий для витрины.',

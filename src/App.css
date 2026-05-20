@@ -1117,8 +1117,45 @@
   word-break: break-all;
 }
 
+.admin-orders-page,
+.admin-order-list {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-orders-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 260px));
+  gap: 12px;
+}
+
+.admin-order-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.admin-order-card > div,
+.admin-order-card__statuses {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-order-card span {
+  color: var(--text-soft);
+}
+
 @media (width <= 900px) {
   .payment-topup-card {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-orders-filters,
+  .admin-order-card {
     grid-template-columns: 1fr;
   }
 }

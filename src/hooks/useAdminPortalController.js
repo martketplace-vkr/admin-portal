@@ -33,6 +33,8 @@ export function useAdminPortalController() {
   const [reviewDisputes, setReviewDisputes] = useState([])
   const [reviewReports, setReviewReports] = useState([])
   const [paymentTopUps, setPaymentTopUps] = useState([])
+  const [adminOrders, setAdminOrders] = useState([])
+  const [adminOrderFilters, setAdminOrderFilters] = useState({ paymentStatus: '', fulfillmentStatus: '' })
   const [moderationSearch, setModerationSearch] = useState('')
   const [moderationFilter, setModerationFilter] = useState('attention')
   const [vendorSearch, setVendorSearch] = useState('')
@@ -152,7 +154,7 @@ export function useAdminPortalController() {
       setProfileForm(profile)
       setSessionStatus('active')
     })
-    await Promise.allSettled([loadPlatformProducts(token), loadReviewDisputes(token), loadReviewReports(token), loadPaymentTopUps(token)])
+    await Promise.allSettled([loadPlatformProducts(token), loadReviewDisputes(token), loadReviewReports(token), loadPaymentTopUps(token), loadAdminOrders(token)])
   }
 
   async function fetchProfile(token) {
@@ -244,6 +246,28 @@ export function useAdminPortalController() {
       handleError(error)
     } finally {
       setBusy('paymentTopUps', false)
+    }
+  }
+
+  async function loadAdminOrders(token = accessToken, filters = adminOrderFilters) {
+    setBusy('adminOrders', true)
+
+    try {
+      const params = new URLSearchParams({ limit: '100', offset: '0' })
+      if (filters.paymentStatus) {
+        params.set('payment_status', filters.paymentStatus)
+      }
+      if (filters.fulfillmentStatus) {
+        params.set('fulfillment_status', filters.fulfillmentStatus)
+      }
+      const response = await apiRequest(`/api/v1/admin/orders?${params.toString()}`, { token })
+      startTransition(() => {
+        setAdminOrders(response.orders || [])
+      })
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy('adminOrders', false)
     }
   }
 
@@ -587,6 +611,41 @@ export function useAdminPortalController() {
     }
   }
 
+  function changeAdminOrderFilter(key, value) {
+    const nextFilters = { ...adminOrderFilters, [key]: value }
+    startTransition(() => {
+      setAdminOrderFilters(nextFilters)
+    })
+    void loadAdminOrders(accessToken, nextFilters)
+  }
+
+  async function updateAdminOrderPaymentStatus(orderId, paymentStatus) {
+    const normalizedOrderId = toText(orderId).trim()
+    const normalizedStatus = toText(paymentStatus).trim()
+    if (!normalizedOrderId || !normalizedStatus) {
+      notify('Не удалось обновить статус оплаты.', 'warning')
+      return
+    }
+
+    setBusy(`adminOrderPayment-${normalizedOrderId}`, true)
+
+    try {
+      const response = await authedRequest(`/api/v1/admin/orders/${encodeURIComponent(normalizedOrderId)}/payment-status`, {
+        method: 'PATCH',
+        body: { payment_status: normalizedStatus },
+      })
+      const updatedOrder = response.order
+      startTransition(() => {
+        setAdminOrders((current) => current.map((order) => (toText(order?.id) === normalizedOrderId ? updatedOrder || order : order)))
+      })
+      notify('Статус оплаты обновлен.', 'success')
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy(`adminOrderPayment-${normalizedOrderId}`, false)
+    }
+  }
+
   function navigate(path) {
     if (`${window.location.pathname}${window.location.search}` === path) {
       return
@@ -612,6 +671,7 @@ export function useAdminPortalController() {
       setReviewDisputes([])
       setReviewReports([])
       setPaymentTopUps([])
+      setAdminOrders([])
     })
   }
 
@@ -716,6 +776,14 @@ export function useAdminPortalController() {
         busyKeys,
         onReload: () => loadPaymentTopUps(),
         onConfirm: confirmPaymentTopUp,
+      },
+      orders: {
+        orders: adminOrders,
+        filters: adminOrderFilters,
+        busyKeys,
+        onFilterChange: changeAdminOrderFilter,
+        onReload: () => loadAdminOrders(),
+        onPaymentStatusChange: updateAdminOrderPaymentStatus,
       },
       moderationProduct: {
         item: routeModerationItem,
