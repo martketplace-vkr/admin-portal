@@ -48,7 +48,7 @@ export const PAGE_COPY = {
   },
   orders: {
     title: 'Заказы',
-    description: 'Статусы оплаты и выполнения заказов.',
+    description: 'Агрегация по номеру, вендору и статусу, контроль оплаты.',
   },
   categories: {
     title: 'Категории',

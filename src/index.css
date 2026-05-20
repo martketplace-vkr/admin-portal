@@ -2,20 +2,20 @@
   --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
   --font-display: 'Space Grotesk', 'IBM Plex Sans', sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
-  --bg-ink: #f5f7fb;
+  --bg-ink: #f3f5f9;
   --bg-panel: #ffffff;
   --bg-panel-strong: #ffffff;
-  --line-soft: #dfe6f0;
-  --line-strong: #9bb6da;
+  --line-soft: rgba(15, 64, 152, 0.08);
+  --line-strong: rgba(0, 105, 255, 0.28);
   --text-main: #172033;
-  --text-soft: #5f6f86;
-  --text-faint: #8c9aae;
+  --text-soft: #53627d;
+  --text-faint: rgba(33, 52, 87, 0.46);
   --accent-gold: #2563eb;
   --accent-sand: #1d4ed8;
   --accent-green: #15965f;
   --accent-red: #dc4c4c;
   --accent-blue: #2563eb;
-  --shadow-soft: 0 16px 38px rgba(22, 32, 51, 0.08);
+  --shadow-soft: 0 18px 42px rgba(22, 43, 85, 0.1);
   font-family: var(--font-body);
   line-height: 1.5;
   font-weight: 500;
@@ -41,6 +41,7 @@ body,
 
 body {
   margin: 0;
+  background: linear-gradient(180deg, #f8fbff 0%, #f3f5f9 100%);
 }
 
 body,

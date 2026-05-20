@@ -18,6 +18,11 @@ import {
   readModerationState,
   writeModerationState,
 } from './adminModel'
+import {
+  buildOrderAggregations,
+  buildVendorOptions,
+  filterAdminOrders,
+} from './adminOrderModel'
 
 const MAX_CATALOG_PRODUCTS = 800
 
@@ -34,7 +39,12 @@ export function useAdminPortalController() {
   const [reviewReports, setReviewReports] = useState([])
   const [paymentTopUps, setPaymentTopUps] = useState([])
   const [adminOrders, setAdminOrders] = useState([])
-  const [adminOrderFilters, setAdminOrderFilters] = useState({ paymentStatus: '', fulfillmentStatus: '' })
+  const [adminOrderFilters, setAdminOrderFilters] = useState({
+    paymentStatus: '',
+    fulfillmentStatus: '',
+    vendorId: '',
+    orderQuery: '',
+  })
   const [moderationSearch, setModerationSearch] = useState('')
   const [moderationFilter, setModerationFilter] = useState('attention')
   const [vendorSearch, setVendorSearch] = useState('')
@@ -83,6 +93,12 @@ export function useAdminPortalController() {
     () => vendorInsights.find((item) => item.vendorId === normalizeVendorKey(route.vendorId)) || null,
     [route.vendorId, vendorInsights],
   )
+  const visibleAdminOrders = useMemo(
+    () => filterAdminOrders(adminOrders, adminOrderFilters),
+    [adminOrders, adminOrderFilters],
+  )
+  const adminOrderAggregations = useMemo(() => buildOrderAggregations(visibleAdminOrders), [visibleAdminOrders])
+  const adminOrderVendorOptions = useMemo(() => buildVendorOptions(adminOrders), [adminOrders])
 
   const handleBootstrapEffect = useEffectEvent(() => {
     void bootstrap()
@@ -253,7 +269,7 @@ export function useAdminPortalController() {
     setBusy('adminOrders', true)
 
     try {
-      const params = new URLSearchParams({ limit: '100', offset: '0' })
+      const params = new URLSearchParams({ limit: '200', offset: '0' })
       if (filters.paymentStatus) {
         params.set('payment_status', filters.paymentStatus)
       }
@@ -616,7 +632,10 @@ export function useAdminPortalController() {
     startTransition(() => {
       setAdminOrderFilters(nextFilters)
     })
-    void loadAdminOrders(accessToken, nextFilters)
+
+    if (key === 'paymentStatus' || key === 'fulfillmentStatus') {
+      void loadAdminOrders(accessToken, nextFilters)
+    }
   }
 
   async function updateAdminOrderPaymentStatus(orderId, paymentStatus) {
@@ -732,6 +751,7 @@ export function useAdminPortalController() {
       sidebar: {
         navItems: adminNavItems,
         currentPage: route.page === 'vendorProfile' ? 'vendors' : route.page === 'moderationProduct' ? 'moderation' : route.page,
+        profileName: profileForm.firstName || profileForm.email || 'Admin',
         onNavigate: navigate,
         brandBadge: adminShellCopy.brandBadge,
         brandTitle: adminShellCopy.brandTitle,
@@ -778,7 +798,9 @@ export function useAdminPortalController() {
         onConfirm: confirmPaymentTopUp,
       },
       orders: {
-        orders: adminOrders,
+        orders: visibleAdminOrders,
+        aggregations: adminOrderAggregations,
+        vendorOptions: adminOrderVendorOptions,
         filters: adminOrderFilters,
         busyKeys,
         onFilterChange: changeAdminOrderFilter,
