@@ -14,7 +14,6 @@ export function AuthPage({
       <section className="auth-panel">
         <div className="panel-head">
           <div>
-            <span className="eyebrow">{copy.panelEyebrow}</span>
             <h2>{authMode === 'login' ? copy.loginTitle : copy.registerTitle}</h2>
           </div>
         </div>

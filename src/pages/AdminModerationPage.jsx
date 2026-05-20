@@ -21,7 +21,6 @@ export function AdminModerationPage({
       <section className="panel-card panel-list">
         <div className="panel-head">
           <div>
-            <span className="eyebrow">очередь</span>
             <h2>Товары на ручной проверке</h2>
           </div>
           <div className="status-chip">
@@ -108,7 +107,6 @@ export function AdminModerationProductPage({
         <section className="panel-card">
           <div className="panel-head">
             <div>
-              <span className="eyebrow">карточка</span>
               <h2>Товар не найден</h2>
             </div>
           </div>
@@ -128,7 +126,6 @@ export function AdminModerationProductPage({
       <section className="panel-card panel-editor moderation-product">
         <div className="panel-head">
           <div>
-            <span className="eyebrow">карточка</span>
             <h2>{getProductName(item.product) || 'Без названия'}</h2>
           </div>
           <div className="moderation-product__actions">

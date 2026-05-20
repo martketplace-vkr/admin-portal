@@ -37,7 +37,6 @@ export const adminAuthCopy = {
 export const adminShellCopy = {
   brandTitle: 'Platform Admin',
   brandBadge: 'A',
-  brandSubtitle: 'операционный центр',
   ctaEyebrow: 'контроль',
   ctaTitle: 'Очередь модерации',
   ctaDescription: 'Перейдите к проверке каталога, чтобы быстро разобрать карточки с рисками и пустыми данными.',

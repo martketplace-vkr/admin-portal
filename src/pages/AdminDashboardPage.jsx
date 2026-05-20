@@ -17,7 +17,6 @@ export function AdminDashboardPage({
     <div className="page-grid">
       <section className="hero-strip">
         <div>
-          <span className="eyebrow">операционный обзор</span>
           <h2>Админская часть собрана вокруг каталога платформы, очереди модерации и здоровья вендоров.</h2>
         </div>
         <div className="hero-strip__actions">
@@ -42,7 +41,6 @@ export function AdminDashboardPage({
         <section className="panel-card">
           <div className="panel-head">
             <div>
-              <span className="eyebrow">pipeline</span>
               <h2>Статусы модерации</h2>
             </div>
           </div>
@@ -65,7 +63,6 @@ export function AdminDashboardPage({
         <section className="panel-card">
           <div className="panel-head">
             <div>
-              <span className="eyebrow">вендоры</span>
               <h2>Кому сейчас нужно внимание платформы</h2>
             </div>
           </div>
@@ -97,7 +94,6 @@ export function AdminDashboardPage({
       <section className="panel-card">
         <div className="panel-head">
           <div>
-            <span className="eyebrow">зона внимания</span>
             <h2>Карточки, которые стоит проверить в первую очередь</h2>
           </div>
         </div>

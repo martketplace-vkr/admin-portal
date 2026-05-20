@@ -12,7 +12,6 @@ export function AdminProfilePage({
       <section className="panel-card">
         <div className="panel-head">
           <div>
-            <span className="eyebrow">staff profile</span>
             <h2>Данные сотрудника платформы</h2>
           </div>
         </div>

@@ -61,7 +61,6 @@ export function AdminCategoriesPage({
       <section className="panel-card panel-list category-panel">
         <div className="panel-head category-panel__head">
           <div>
-            <span className="eyebrow">структура</span>
             {/* <h2>Текущие категории</h2> */}
           </div>
           <div className="category-panel__actions">

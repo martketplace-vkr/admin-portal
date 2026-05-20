@@ -20,7 +20,6 @@ function App() {
     return (
       <div className="loading-stage">
         <div className="loading-card">
-          <span className="eyebrow">{controller.loadingCopy.eyebrow}</span>
           <h1>{controller.loadingCopy.title}</h1>
         </div>
       </div>

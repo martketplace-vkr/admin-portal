@@ -47,14 +47,13 @@ export function AdminOrdersPage({
       </section>
 
       <div className="page-split">
-        <AggregationPanel eyebrow="статусы" title="Агрегация по статусу заказа" items={aggregations.byStatus} maxValue={maxStatusValue} />
-        <AggregationPanel eyebrow="вендоры" title="Агрегация по вендору" items={aggregations.byVendor} maxValue={maxVendorValue} />
+        <AggregationPanel title="Агрегация по статусу заказа" items={aggregations.byStatus} maxValue={maxStatusValue} />
+        <AggregationPanel title="Агрегация по вендору" items={aggregations.byVendor} maxValue={maxVendorValue} />
       </div>
 
       <section className="panel-card orders-board">
         <div className="panel-head orders-board__head">
           <div>
-            <span className="eyebrow">операции</span>
             <h2>Заказы платформы</h2>
             <p>Фильтруйте по номеру, вендору, оплате и статусу выполнения. Сводки пересчитываются по текущей выборке.</p>
           </div>
@@ -180,12 +179,11 @@ export function AdminOrdersPage({
   )
 }
 
-function AggregationPanel({ eyebrow, title, items, maxValue }) {
+function AggregationPanel({ title, items, maxValue }) {
   return (
     <section className="panel-card">
       <div className="panel-head">
         <div>
-          <span className="eyebrow">{eyebrow}</span>
           <h2>{title}</h2>
         </div>
       </div>

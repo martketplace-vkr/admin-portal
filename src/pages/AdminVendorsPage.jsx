@@ -12,7 +12,6 @@ export function AdminVendorsPage({
       <section className="panel-card panel-list">
         <div className="panel-head">
           <div>
-            <span className="eyebrow">вендоры</span>
             <h2>Срез по владельцам каталога</h2>
           </div>
           <div className="status-chip">
@@ -78,7 +77,6 @@ export function AdminVendorProfilePage({
         <section className="panel-card">
           <div className="panel-head">
             <div>
-              <span className="eyebrow">профиль вендора</span>
               <h2>Вендор не найден</h2>
             </div>
           </div>
@@ -98,7 +96,6 @@ export function AdminVendorProfilePage({
       <section className="panel-card panel-editor vendor-profile">
         <div className="panel-head">
           <div>
-            <span className="eyebrow">профиль вендора</span>
             <h2>{vendor.label}</h2>
           </div>
           <div className="vendor-profile__actions">
