@@ -68,8 +68,12 @@ export function AdminVendorsPage({
 export function AdminVendorProfilePage({
   vendor,
   vendorId,
+  tariffs = [],
+  currentTariff,
+  busyKeys = {},
   onBack,
   onInspectProduct,
+  onAssignTariff,
 }) {
   if (!vendor) {
     return (
@@ -115,6 +119,33 @@ export function AdminVendorProfilePage({
           <MetricCard label="В зоне риска" value={vendor.attentionCount} hint="нужна проверка" tone="warning" />
         </section>
 
+        <section className="text-surface vendor-tariff-panel">
+          <div>
+            <strong>Тариф вендора</strong>
+            <p>
+              {currentTariff
+                ? `${currentTariff.name}: ${formatPercent(currentTariff.commission_percent ?? currentTariff.commissionPercent)} за успешный заказ`
+                : 'Используется дефолтный тариф или данные еще загружаются.'}
+            </p>
+          </div>
+          <label className="field vendor-tariff-panel__select">
+            <span className="field-label">Назначить тариф</span>
+            <select
+              className="field-control"
+              value={currentTariff?.id || ''}
+              onChange={(event) => onAssignTariff(vendor.vendorId, event.target.value)}
+              disabled={busyKeys[`vendorTariff-${vendor.vendorId}`]}
+            >
+              <option value="">Выберите тариф</option>
+              {tariffs.map((tariff) => (
+                <option key={tariff.id} value={tariff.id}>
+                  {tariff.name} - {formatPercent(tariff.commission_percent ?? tariff.commissionPercent)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
+
         <div className="lineup">
           {vendor.items.map((item) => (
             <article key={item.productId} className="lineup-item">
@@ -133,4 +164,9 @@ export function AdminVendorProfilePage({
       </section>
     </div>
   )
+}
+
+function formatPercent(value) {
+  const number = Number.parseFloat(String(value || '0').replace(',', '.'))
+  return `${Number.isFinite(number) ? number.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : '0'}%`
 }

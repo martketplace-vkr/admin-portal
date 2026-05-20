@@ -14,6 +14,10 @@ export function readRoute() {
     return { page: 'orders' }
   }
 
+  if (cleanPath === '/tariffs' || cleanPath === '/admin/tariffs') {
+    return { page: 'tariffs' }
+  }
+
   if (cleanPath === '/' || cleanPath === '/admin') {
     return { page: 'dashboard' }
   }

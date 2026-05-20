@@ -39,6 +39,10 @@ export function useAdminPortalController() {
   const [reviewReports, setReviewReports] = useState([])
   const [paymentTopUps, setPaymentTopUps] = useState([])
   const [adminOrders, setAdminOrders] = useState([])
+  const [tariffs, setTariffs] = useState([])
+  const [vendorTariffs, setVendorTariffs] = useState({})
+  const [tariffForm, setTariffForm] = useState({ name: '', commissionPercent: '5' })
+  const [tariffAssignmentForm, setTariffAssignmentForm] = useState({ vendorId: '', tariffId: '' })
   const [adminOrderFilters, setAdminOrderFilters] = useState({
     paymentStatus: '',
     fulfillmentStatus: '',
@@ -170,7 +174,7 @@ export function useAdminPortalController() {
       setProfileForm(profile)
       setSessionStatus('active')
     })
-    await Promise.allSettled([loadPlatformProducts(token), loadReviewDisputes(token), loadReviewReports(token), loadPaymentTopUps(token), loadAdminOrders(token)])
+    await Promise.allSettled([loadPlatformProducts(token), loadReviewDisputes(token), loadReviewReports(token), loadPaymentTopUps(token), loadAdminOrders(token), loadTariffs(token)])
   }
 
   async function fetchProfile(token) {
@@ -284,6 +288,40 @@ export function useAdminPortalController() {
       handleError(error)
     } finally {
       setBusy('adminOrders', false)
+    }
+  }
+
+  async function loadTariffs(token = accessToken) {
+    setBusy('tariffs', true)
+
+    try {
+      const response = await apiRequest('/api/v1/admin/tariffs', { token })
+      startTransition(() => {
+        setTariffs(response.tariffs || [])
+      })
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy('tariffs', false)
+    }
+  }
+
+  async function loadVendorTariff(vendorId, token = accessToken) {
+    const normalizedVendorId = toText(vendorId).trim()
+    if (!normalizedVendorId) {
+      return null
+    }
+
+    try {
+      const response = await apiRequest(`/api/v1/admin/vendors/${encodeURIComponent(normalizedVendorId)}/tariff`, { token })
+      const tariff = response.tariff || null
+      startTransition(() => {
+        setVendorTariffs((current) => ({ ...current, [normalizedVendorId]: tariff }))
+      })
+      return tariff
+    } catch (error) {
+      handleError(error)
+      return null
     }
   }
 
@@ -549,6 +587,7 @@ export function useAdminPortalController() {
 
   function openVendorProfile(vendorId) {
     const normalizedVendorId = normalizeVendorKey(vendorId)
+    void loadVendorTariff(normalizedVendorId)
     navigate(`/vendors/${encodeURIComponent(normalizedVendorId)}`)
   }
 
@@ -627,6 +666,119 @@ export function useAdminPortalController() {
     }
   }
 
+  async function createTariff(event) {
+    event.preventDefault()
+    const name = tariffForm.name.trim()
+    const commissionPercent = tariffForm.commissionPercent.trim()
+    if (!name || !commissionPercent) {
+      notify('Введите название тарифа и процент комиссии.', 'warning')
+      return
+    }
+
+    setBusy('tariffCreate', true)
+    try {
+      await authedRequest('/api/v1/admin/tariffs', {
+        method: 'POST',
+        body: { name, commission_percent: commissionPercent },
+      })
+      startTransition(() => {
+        setTariffForm({ name: '', commissionPercent: '5' })
+      })
+      await loadTariffs()
+      notify('Тариф создан.', 'success')
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy('tariffCreate', false)
+    }
+  }
+
+  async function updateTariff(event, tariff) {
+    event.preventDefault()
+    const tariffId = toText(tariff?.id).trim()
+    if (!tariffId) {
+      return
+    }
+
+    const formData = new FormData(event.currentTarget)
+    const name = toText(formData.get('name')).trim()
+    const commissionPercent = toText(formData.get('commission_percent')).trim()
+    if (!name || !commissionPercent) {
+      notify('Введите название тарифа и процент комиссии.', 'warning')
+      return
+    }
+
+    setBusy(`tariffUpdate-${tariffId}`, true)
+    try {
+      await authedRequest(`/api/v1/admin/tariffs/${encodeURIComponent(tariffId)}`, {
+        method: 'PATCH',
+        body: { name, commission_percent: commissionPercent },
+      })
+      await loadTariffs()
+      notify('Тариф обновлен.', 'success')
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy(`tariffUpdate-${tariffId}`, false)
+    }
+  }
+
+  async function setDefaultTariff(tariffId) {
+    const normalizedTariffId = toText(tariffId).trim()
+    if (!normalizedTariffId) {
+      return
+    }
+
+    setBusy(`tariffDefault-${normalizedTariffId}`, true)
+    try {
+      await authedRequest(`/api/v1/admin/tariffs/${encodeURIComponent(normalizedTariffId)}/default`, {
+        method: 'PATCH',
+      })
+      await loadTariffs()
+      notify('Дефолтный тариф обновлен.', 'success')
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy(`tariffDefault-${normalizedTariffId}`, false)
+    }
+  }
+
+  async function assignVendorTariff(eventOrVendorId, maybeTariffId) {
+    const isSubmitEvent = Boolean(eventOrVendorId?.preventDefault)
+    if (isSubmitEvent) {
+      eventOrVendorId.preventDefault()
+    }
+
+    const vendorId = toText(isSubmitEvent ? tariffAssignmentForm.vendorId : eventOrVendorId).trim()
+    const tariffId = toText(isSubmitEvent ? tariffAssignmentForm.tariffId : maybeTariffId).trim()
+    if (!vendorId || !tariffId) {
+      notify('Укажите vendor_id и тариф.', 'warning')
+      return
+    }
+
+    setBusy('tariffAssign', true)
+    setBusy(`vendorTariff-${vendorId}`, true)
+    try {
+      const response = await authedRequest(`/api/v1/admin/vendors/${encodeURIComponent(vendorId)}/tariff`, {
+        method: 'PUT',
+        body: { tariff_id: Number(tariffId) },
+      })
+      startTransition(() => {
+        setVendorTariffs((current) => ({ ...current, [vendorId]: response.tariff || null }))
+        if (isSubmitEvent) {
+          setTariffAssignmentForm({ vendorId: '', tariffId: '' })
+        }
+      })
+      await loadTariffs()
+      notify('Тариф назначен вендору.', 'success')
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy('tariffAssign', false)
+      setBusy(`vendorTariff-${vendorId}`, false)
+    }
+  }
+
   function changeAdminOrderFilter(key, value) {
     const nextFilters = { ...adminOrderFilters, [key]: value }
     startTransition(() => {
@@ -691,6 +843,8 @@ export function useAdminPortalController() {
       setReviewReports([])
       setPaymentTopUps([])
       setAdminOrders([])
+      setTariffs([])
+      setVendorTariffs({})
     })
   }
 
@@ -807,6 +961,18 @@ export function useAdminPortalController() {
         onReload: () => loadAdminOrders(),
         onPaymentStatusChange: updateAdminOrderPaymentStatus,
       },
+      tariffs: {
+        tariffs,
+        tariffForm,
+        assignmentForm: tariffAssignmentForm,
+        busyKeys,
+        onTariffFormChange: setTariffForm,
+        onAssignmentFormChange: setTariffAssignmentForm,
+        onCreateTariff: createTariff,
+        onUpdateTariff: updateTariff,
+        onSetDefaultTariff: setDefaultTariff,
+        onAssignVendorTariff: assignVendorTariff,
+      },
       moderationProduct: {
         item: routeModerationItem,
         productId: route.productId,
@@ -832,8 +998,12 @@ export function useAdminPortalController() {
       vendorProfile: {
         vendor: routeVendorInsight,
         vendorId: route.vendorId,
+        tariffs,
+        currentTariff: vendorTariffs[normalizeVendorKey(route.vendorId)] || null,
+        busyKeys,
         onBack: () => navigate('/vendors'),
         onInspectProduct: openModerationProduct,
+        onAssignTariff: assignVendorTariff,
       },
       profile: {
         profileForm,

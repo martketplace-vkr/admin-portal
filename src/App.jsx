@@ -8,6 +8,7 @@ import { AdminModerationPage, AdminModerationProductPage } from './pages/AdminMo
 import { AdminOrdersPage } from './pages/AdminOrdersPage'
 import { AdminPaymentsPage } from './pages/AdminPaymentsPage'
 import { AdminProfilePage } from './pages/AdminProfilePage'
+import { AdminTariffsPage } from './pages/AdminTariffsPage'
 import { AdminVendorProfilePage, AdminVendorsPage } from './pages/AdminVendorsPage'
 import { AuthPage } from './pages/AuthPage'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -61,6 +62,10 @@ function renderCurrentPage(controller) {
 
   if (controller.route.page === 'orders') {
     return <AdminOrdersPage {...controller.pageProps.orders} />
+  }
+
+  if (controller.route.page === 'tariffs') {
+    return <AdminTariffsPage {...controller.pageProps.tariffs} />
   }
 
   if (controller.route.page === 'dashboard') {
