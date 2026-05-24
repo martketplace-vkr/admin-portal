@@ -3,6 +3,7 @@ import { Sidebar } from './components/layout/Sidebar'
 import { ToastHost } from './components/layout/ToastHost'
 import { useAdminPortalController } from './hooks/useAdminPortalController'
 import { AdminCategoriesPage } from './pages/AdminCategoriesPage'
+import { AdminAccountsPage } from './pages/AdminAccountsPage'
 import { AdminDashboardPage } from './pages/AdminDashboardPage'
 import { AdminModerationPage, AdminModerationProductPage } from './pages/AdminModerationPage'
 import { AdminOrdersPage } from './pages/AdminOrdersPage'
@@ -58,6 +59,10 @@ function renderCurrentPage(controller) {
 
   if (controller.route.page === 'payments') {
     return <AdminPaymentsPage {...controller.pageProps.payments} />
+  }
+
+  if (controller.route.page === 'accounts') {
+    return <AdminAccountsPage {...controller.pageProps.accounts} />
   }
 
   if (controller.route.page === 'orders') {

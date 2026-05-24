@@ -3,6 +3,7 @@ export const adminNavItems = [
   { path: '/moderation', page: 'moderation', label: 'Модерация' },
   { path: '/reviews', page: 'reviews', label: 'Отзывы' },
   { path: '/payments', page: 'payments', label: 'Платежи' },
+  { path: '/accounts', page: 'accounts', label: 'Счета' },
   { path: '/orders', page: 'orders', label: 'Заказы' },
   { path: '/tariffs', page: 'tariffs', label: 'Тарифы' },
   { path: '/categories', page: 'categories', label: 'Категории' },

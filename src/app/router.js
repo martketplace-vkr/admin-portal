@@ -10,6 +10,10 @@ export function readRoute() {
     return { page: 'payments' }
   }
 
+  if (cleanPath === '/accounts' || cleanPath === '/admin/accounts') {
+    return { page: 'accounts' }
+  }
+
   if (cleanPath === '/orders' || cleanPath === '/admin/orders') {
     return { page: 'orders' }
   }

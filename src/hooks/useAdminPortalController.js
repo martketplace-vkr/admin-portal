@@ -43,6 +43,9 @@ export function useAdminPortalController() {
   const [vendorTariffs, setVendorTariffs] = useState({})
   const [tariffForm, setTariffForm] = useState({ name: '', commissionPercent: '5' })
   const [tariffAssignmentForm, setTariffAssignmentForm] = useState({ vendorId: '', tariffId: '' })
+  const [accountWallet, setAccountWallet] = useState(null)
+  const [accountTransactions, setAccountTransactions] = useState([])
+  const [accountFilters, setAccountFilters] = useState({ ownerType: 'system', ownerId: '', currencyCode: '' })
   const [adminOrderFilters, setAdminOrderFilters] = useState({
     paymentStatus: '',
     fulfillmentStatus: '',
@@ -174,7 +177,7 @@ export function useAdminPortalController() {
       setProfileForm(profile)
       setSessionStatus('active')
     })
-    await Promise.allSettled([loadPlatformProducts(token), loadReviewDisputes(token), loadReviewReports(token), loadPaymentTopUps(token), loadAdminOrders(token), loadTariffs(token)])
+    await Promise.allSettled([loadPlatformProducts(token), loadReviewDisputes(token), loadReviewReports(token), loadPaymentTopUps(token), loadAdminOrders(token), loadTariffs(token), loadAdminAccounts(token)])
   }
 
   async function fetchProfile(token) {
@@ -288,6 +291,58 @@ export function useAdminPortalController() {
       handleError(error)
     } finally {
       setBusy('adminOrders', false)
+    }
+  }
+
+  async function loadAdminAccounts(token = accessToken, filters = accountFilters) {
+    setBusy('accounts', true)
+
+    const ownerType = filters.ownerType || 'system'
+    const ownerId = ownerType === 'system' ? '0' : toText(filters.ownerId).trim()
+    if (ownerType === 'vendor' && !ownerId) {
+      setBusy('accounts', false)
+      notify('Укажите vendor_id для просмотра счета.', 'warning')
+      return
+    }
+
+    const params = new URLSearchParams({
+      owner_type: ownerType,
+      owner_id: ownerId,
+      limit: '50',
+      offset: '0',
+    })
+    if (filters.currencyCode) {
+      params.set('currency_code', filters.currencyCode)
+    }
+
+    try {
+      const [walletResponse, transactionsResponse] = await Promise.all([
+        apiRequest(`/api/v1/admin/balance/wallet?${params.toString()}`, { token }),
+        apiRequest(`/api/v1/admin/balance/transactions?${params.toString()}`, { token }),
+      ])
+
+      startTransition(() => {
+        setAccountWallet(walletResponse.wallet || null)
+        setAccountTransactions(transactionsResponse.transactions || [])
+      })
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy('accounts', false)
+    }
+  }
+
+  function updateAccountFilter(key, value) {
+    const nextFilters = {
+      ...accountFilters,
+      [key]: value,
+    }
+    if (key === 'ownerType' && value === 'system') {
+      nextFilters.ownerId = ''
+    }
+    setAccountFilters(nextFilters)
+    if (nextFilters.ownerType === 'system' || toText(nextFilters.ownerId).trim()) {
+      void loadAdminAccounts(accessToken, nextFilters)
     }
   }
 
@@ -843,6 +898,9 @@ export function useAdminPortalController() {
       setReviewReports([])
       setPaymentTopUps([])
       setAdminOrders([])
+      setAccountWallet(null)
+      setAccountTransactions([])
+      setAccountFilters({ ownerType: 'system', ownerId: '', currencyCode: '' })
       setTariffs([])
       setVendorTariffs({})
     })
@@ -950,6 +1008,14 @@ export function useAdminPortalController() {
         busyKeys,
         onReload: () => loadPaymentTopUps(),
         onConfirm: confirmPaymentTopUp,
+      },
+      accounts: {
+        wallet: accountWallet,
+        transactions: accountTransactions,
+        filters: accountFilters,
+        busyKeys,
+        onFilterChange: updateAccountFilter,
+        onLoad: () => loadAdminAccounts(),
       },
       orders: {
         orders: visibleAdminOrders,
