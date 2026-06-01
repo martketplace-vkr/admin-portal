@@ -15,24 +15,12 @@ export function AdminAccountsPage({
   wallet,
   transactions = [],
   filters,
-  busyKeys,
   onFilterChange,
-  onLoad,
 }) {
   const accounts = wallet?.accounts || []
 
   return (
     <div className="page-grid">
-      <section className="hero-strip">
-        <div>
-          <h2>Счета</h2>
-          <p>Системный кошелек маркетплейса и балансы выбранного вендора.</p>
-        </div>
-        <button className="button button-secondary" type="button" onClick={onLoad} disabled={busyKeys.accounts}>
-          {busyKeys.accounts ? 'Загружаем...' : 'Загрузить'}
-        </button>
-      </section>
-
       <section className="panel-card account-controls">
         <label className="field">
           <span>Владелец</span>

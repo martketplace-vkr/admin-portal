@@ -1,18 +1,8 @@
 import { formatDateTime, formatPrice, toText } from '../helpers'
 
-export function AdminPaymentsPage({ topUps = [], exchangeRateForm, busyKeys, onExchangeRateChange, onExchangeRateSave, onReload, onConfirm }) {
+export function AdminPaymentsPage({ topUps = [], exchangeRateForm, busyKeys, onExchangeRateChange, onExchangeRateSave, onConfirm }) {
   return (
     <div className="page-grid">
-      <section className="hero-strip">
-        <div>
-          <h2>Платежи</h2>
-          <p>Ручное подтверждение RUB пополнений через mock-провайдера.</p>
-        </div>
-        <button className="button button-secondary" type="button" onClick={onReload} disabled={busyKeys.paymentTopUps}>
-          {busyKeys.paymentTopUps ? 'Обновляем...' : 'Обновить'}
-        </button>
-      </section>
-
       <section className="panel-card">
         <div className="panel-head">
           <div>

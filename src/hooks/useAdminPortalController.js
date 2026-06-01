@@ -732,10 +732,6 @@ export function useAdminPortalController() {
     }))
   }
 
-  function openModeration() {
-    navigate('/moderation')
-  }
-
   function openModerationProduct(productId) {
     navigate(`/moderation/${encodeURIComponent(toText(productId))}`)
   }
@@ -1093,8 +1089,6 @@ export function useAdminPortalController() {
         moderationBuckets,
         hotVendors,
         attentionProducts,
-        onOpenModeration: openModeration,
-        onOpenVendors: () => navigate('/vendors'),
         onInspectProduct: openModerationProduct,
         onInspectVendor: openVendorProfile,
         userDashboard,
@@ -1121,7 +1115,6 @@ export function useAdminPortalController() {
         reviews: reviewDisputes,
         reports: reviewReports,
         busyKeys,
-        onReload: () => Promise.allSettled([loadReviewDisputes(), loadReviewReports()]),
         onAccept: (review) => resolveReviewDispute(review, 'accepted'),
         onReject: (review) => resolveReviewDispute(review, 'rejected'),
         onDelete: deleteReview,
@@ -1132,7 +1125,6 @@ export function useAdminPortalController() {
         busyKeys,
         onExchangeRateChange: setExchangeRateForm,
         onExchangeRateSave: updateUSDTExchangeRate,
-        onReload: () => Promise.allSettled([loadPaymentTopUps(), loadUSDTExchangeRate()]),
         onConfirm: confirmPaymentTopUp,
       },
       accounts: {
@@ -1141,7 +1133,6 @@ export function useAdminPortalController() {
         filters: accountFilters,
         busyKeys,
         onFilterChange: updateAccountFilter,
-        onLoad: () => loadAdminAccounts(),
       },
       orders: {
         orders: visibleAdminOrders,

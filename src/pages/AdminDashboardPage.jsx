@@ -7,8 +7,6 @@ export function AdminDashboardPage({
   moderationBuckets,
   hotVendors,
   attentionProducts,
-  onOpenModeration,
-  onOpenVendors,
   onInspectProduct,
   onInspectVendor,
   userDashboard,
@@ -18,20 +16,6 @@ export function AdminDashboardPage({
 
   return (
     <div className="page-grid">
-      <section className="hero-strip">
-        <div>
-          <h2>Админская часть собрана вокруг каталога платформы, очереди модерации и здоровья вендоров.</h2>
-        </div>
-        <div className="hero-strip__actions">
-          <button className="button button-primary" type="button" onClick={onOpenModeration}>
-            Разобрать очередь
-          </button>
-          <button className="button button-secondary" type="button" onClick={onOpenVendors}>
-            Открыть вендоров
-          </button>
-        </div>
-      </section>
-
       <UserDashboard dashboard={userDashboard} onPeriodChange={onUserDashboardPeriodChange} />
 
       <section className="metric-grid">
@@ -138,7 +122,7 @@ export function AdminDashboardPage({
 
 function UserDashboard({ dashboard, onPeriodChange }) {
   const [days, setDays] = useState(7)
-  const [activeIndex, setActiveIndex] = useState(null)
+  const [hoverState, setHoverState] = useState(null)
   const trend = dashboard?.trend || []
   const series = [
     { key: 'new_clients', label: 'Регистрации', color: '#2563eb' },
@@ -155,6 +139,7 @@ function UserDashboard({ dashboard, onPeriodChange }) {
   const labelIndexes = getChartLabelIndexes(trend.length)
   const x = (index) => padding.left + (trend.length <= 1 ? plotWidth / 2 : (index / (trend.length - 1)) * plotWidth)
   const y = (value) => padding.top + plotHeight - ((Number(value) || 0) / max) * plotHeight
+  const activeIndex = hoverState?.index ?? null
   const activePoint = activeIndex === null ? null : trend[activeIndex]
   function changeDays(value) {
     setDays(value)
@@ -162,10 +147,14 @@ function UserDashboard({ dashboard, onPeriodChange }) {
   }
   function handlePointerMove(event) {
     if (trend.length === 0) return
-    const bounds = event.currentTarget.getBoundingClientRect()
-    const pointerX = ((event.clientX - bounds.left) / bounds.width) * width
+    const svg = event.currentTarget
+    const pointerX = getSvgPointerX(svg, event, width)
     const relativeX = Math.max(0, Math.min(plotWidth, pointerX - padding.left))
-    setActiveIndex(trend.length === 1 ? 0 : Math.round((relativeX / plotWidth) * (trend.length - 1)))
+    const nextIndex = trend.length === 1 ? 0 : Math.round((relativeX / plotWidth) * (trend.length - 1))
+    setHoverState({
+      index: nextIndex,
+      left: getRenderedSvgXPercent(svg, x(nextIndex), width),
+    })
   }
   return (
     <section className="panel-card user-dashboard">
@@ -185,14 +174,14 @@ function UserDashboard({ dashboard, onPeriodChange }) {
       </div>
       <div className="user-chart-legend">{series.map((line) => <span key={line.key}><i style={{ background: line.color }} />{line.label}</span>)}</div>
       <div className="user-chart-wrap">
-        <svg className="user-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Динамика пользователей" onPointerMove={handlePointerMove} onPointerLeave={() => setActiveIndex(null)}>
+        <svg className="user-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Динамика пользователей" onPointerMove={handlePointerMove} onPointerLeave={() => setHoverState(null)}>
           {tickValues.map((value) => <g key={value}><line className="user-chart__grid-line" x1={padding.left} x2={width - padding.right} y1={y(value)} y2={y(value)} /><text className="user-chart__axis-label" x={padding.left - 8} y={y(value) + 4} textAnchor="end">{formatNumber(value)}</text></g>)}
           {series.map((line) => <g key={line.key}><polyline points={trend.map((item, index) => `${x(index)},${y(item[line.key])}`).join(' ')} style={{ stroke: line.color }} />{trend.map((item, index) => <circle className={`user-chart__point ${activeIndex === index ? 'active' : ''}`} cx={x(index)} cy={y(item[line.key])} fill={line.color} key={`${line.key}-${item.day}`} r={activeIndex === index ? 5 : 3} />)}</g>)}
           {activePoint && <line className="user-chart__hover-line" x1={x(activeIndex)} x2={x(activeIndex)} y1={padding.top} y2={padding.top + plotHeight} />}
           {labelIndexes.map((index) => <text className="user-chart__axis-label" key={trend[index].day} x={x(index)} y={height - 8} textAnchor="middle">{formatShortDate(trend[index].day)}</text>)}
           <rect className="user-chart__hit-area" x={padding.left} y={padding.top} width={plotWidth} height={plotHeight} />
         </svg>
-        {activePoint && <div className={`user-chart-tooltip ${getTooltipAlignment(activeIndex, trend.length)}`} style={{ left: `${(x(activeIndex) / width) * 100}%` }}><strong>{formatFullDate(activePoint.day)}</strong>{series.map((line) => <span key={line.key}><i style={{ background: line.color }} /><em>{line.label}</em><b>{formatNumber(activePoint[line.key])}</b></span>)}</div>}
+        {activePoint && <div className={`user-chart-tooltip ${getTooltipAlignment(activeIndex, trend.length)}`} style={{ left: `${hoverState.left}%` }}><strong>{formatFullDate(activePoint.day)}</strong>{series.map((line) => <span key={line.key}><i style={{ background: line.color }} /><em>{line.label}</em><b>{formatNumber(activePoint[line.key])}</b></span>)}</div>}
       </div>
     </section>
   )
@@ -201,6 +190,35 @@ function UserDashboard({ dashboard, onPeriodChange }) {
 function getChartLabelIndexes(length) {
   if (length <= 4) return Array.from({ length }, (_, index) => index)
   return [...new Set([0, Math.round((length - 1) / 3), Math.round(((length - 1) * 2) / 3), length - 1])]
+}
+
+function getSvgPointerX(svg, event, fallbackWidth) {
+  const matrix = svg.getScreenCTM?.()
+
+  if (matrix) {
+    const point = svg.createSVGPoint()
+    point.x = event.clientX
+    point.y = event.clientY
+    return point.matrixTransform(matrix.inverse()).x
+  }
+
+  const bounds = svg.getBoundingClientRect()
+  return ((event.clientX - bounds.left) / bounds.width) * fallbackWidth
+}
+
+function getRenderedSvgXPercent(svg, x, fallbackWidth) {
+  const bounds = svg.getBoundingClientRect()
+  const matrix = svg.getScreenCTM?.()
+
+  if (matrix) {
+    const point = svg.createSVGPoint()
+    point.x = x
+    point.y = 0
+    const renderedPoint = point.matrixTransform(matrix)
+    return ((renderedPoint.x - bounds.left) / bounds.width) * 100
+  }
+
+  return (x / fallbackWidth) * 100
 }
 
 function getTooltipAlignment(index, length) {
