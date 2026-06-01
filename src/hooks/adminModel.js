@@ -136,13 +136,14 @@ export function buildModerationBuckets(stats) {
   ]
 }
 
-export function buildModerationQueue(products, moderationState, categoryLabelById) {
+export function buildModerationQueue(products, moderationState, categoryLabelById, vendorById = {}) {
   return [...products]
     .map((product) => {
       const productId = getProductId(product)
       const vendorId = normalizeVendorKey(getVendorId(product))
       const moderationRecord = moderationState[productId] || null
-      const quality = buildProductQuality(product)
+      const vendorInfo = vendorById[vendorId] || null
+      const quality = buildProductQuality(product, vendorInfo)
       const decision = toText(moderationRecord?.status) || 'pending'
       const categoryId = getCategoryId(product)
 
@@ -151,6 +152,7 @@ export function buildModerationQueue(products, moderationState, categoryLabelByI
         productId,
         vendorId,
         vendorLabel: quality.vendorLabel,
+        vendorEmail: toText(vendorInfo?.email).trim(),
         decision,
         note: toText(moderationRecord?.note),
         updatedAt: getProductUpdatedAt(product),
@@ -310,7 +312,7 @@ export function toSafeInteger(value) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 0
 }
 
-function buildProductQuality(product) {
+function buildProductQuality(product, vendorInfo = null) {
   const description = getProductDescription(product).trim()
   const images = getProductImages(product)
   const attributes = getProductAttributes(product)
@@ -357,7 +359,7 @@ function buildProductQuality(product) {
     hasContentIssue: flags.some((flag) =>
       ['missing_category', 'missing_description', 'short_description', 'missing_images', 'missing_attributes'].includes(flag.code),
     ),
-    vendorLabel: buildVendorLabel(getVendorId(product)),
+    vendorLabel: buildVendorLabel(getVendorId(product), vendorInfo),
   }
 }
 

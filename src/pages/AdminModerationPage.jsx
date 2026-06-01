@@ -153,9 +153,8 @@ export function AdminModerationProductPage({
         <div className="admin-meta-grid moderation-decision-grid">
           <div className="metric-card metric-card-default">
             <span className="metric-card__label">Вендор</span>
-            <strong className="metric-card__value metric-card__value-small">{item.vendorLabel}</strong>
-            <button className="button button-secondary" type="button" onClick={() => onOpenVendor(item.vendorId)}>
-              Профиль вендора
+            <button className="moderation-vendor-link" type="button" onClick={() => onOpenVendor(item.vendorId)}>
+              {item.vendorEmail || item.vendorLabel}
             </button>
           </div>
           <div className="metric-card metric-card-default">

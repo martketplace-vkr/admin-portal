@@ -80,9 +80,11 @@ export function useAdminPortalController() {
       }, {}),
     [categoryOptions],
   )
+  const vendorById = useMemo(() => buildVendorMap(vendorDirectory), [vendorDirectory])
+  const vendorByEmail = useMemo(() => buildVendorEmailMap(vendorDirectory), [vendorDirectory])
   const moderationQueue = useMemo(
-    () => buildModerationQueue(platformProducts, moderationState, categoryLabelById),
-    [platformProducts, moderationState, categoryLabelById],
+    () => buildModerationQueue(platformProducts, moderationState, categoryLabelById, vendorById),
+    [platformProducts, moderationState, categoryLabelById, vendorById],
   )
   const visibleModerationQueue = useMemo(
     () => moderationQueue.filter((item) => matchesModerationItem(item, deferredModerationSearch, moderationFilter)),
@@ -91,8 +93,6 @@ export function useAdminPortalController() {
   const stats = useMemo(() => buildAdminStats(platformProducts, moderationQueue), [platformProducts, moderationQueue])
   const moderationBuckets = useMemo(() => buildModerationBuckets(stats), [stats])
   const attentionProducts = useMemo(() => moderationQueue.filter((item) => item.attention).slice(0, 6), [moderationQueue])
-  const vendorById = useMemo(() => buildVendorMap(vendorDirectory), [vendorDirectory])
-  const vendorByEmail = useMemo(() => buildVendorEmailMap(vendorDirectory), [vendorDirectory])
   const vendorInsights = useMemo(() => buildVendorInsights(moderationQueue, vendorById), [moderationQueue, vendorById])
   const visibleVendorInsights = useMemo(
     () => vendorInsights.filter((item) => matchesVendorInsight(item, deferredVendorSearch)),
