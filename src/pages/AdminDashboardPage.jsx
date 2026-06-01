@@ -156,12 +156,12 @@ function UserDashboard({ dashboard, onPeriodChange }) {
         </div>
       </div>
       <div className="user-kpi-grid">
-        <MetricCard label="Всего клиентов" value={dashboard?.total_clients || 0} />
-        <MetricCard label="Новые сегодня" value={dashboard?.new_clients_today || 0} tone="accent" />
-        <MetricCard label="Изменение к вчера" value={`${Number(dashboard?.new_clients_delta_percent || 0).toFixed(1)}%`} />
-        <MetricCard label="Активные сегодня" value={dashboard?.active_clients_today || 0} />
-        <MetricCard label="Заблокированы" value={dashboard?.blocked_clients || 0} tone="danger" />
-        <MetricCard label="Уникальные посетители" value={dashboard?.unique_visitors_today || 0} />
+        <UserKpiChip label="Всего клиентов" value={dashboard?.total_clients || 0} />
+        <UserKpiChip label="Новые сегодня" value={dashboard?.new_clients_today || 0} tone="accent" />
+        <UserKpiChip label="Изменение к вчера" value={`${Number(dashboard?.new_clients_delta_percent || 0).toFixed(1)}%`} />
+        <UserKpiChip label="Активные сегодня" value={dashboard?.active_clients_today || 0} />
+        <UserKpiChip label="Заблокированы" value={dashboard?.blocked_clients || 0} tone="danger" />
+        <UserKpiChip label="Уникальные посетители" value={dashboard?.unique_visitors_today || 0} />
       </div>
       <div className="user-chart-legend"><span><i className="line-new" />Регистрации</span><span><i className="line-active" />Активные</span><span><i className="line-visitors" />Посетители</span></div>
       <svg className="user-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Динамика пользователей">
@@ -170,5 +170,14 @@ function UserDashboard({ dashboard, onPeriodChange }) {
         <polyline className="line-visitors" points={points('unique_visitors')} />
       </svg>
     </section>
+  )
+}
+
+function UserKpiChip({ label, value, tone = 'default' }) {
+  return (
+    <div className={`status-chip user-kpi-chip user-kpi-chip-${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   )
 }

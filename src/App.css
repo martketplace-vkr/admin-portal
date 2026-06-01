@@ -975,6 +975,33 @@
   white-space: nowrap;
 }
 
+.segmented-control {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.segmented-control button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-main);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.segmented-control button.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
 .decision-pill,
 .flag-chip {
   width: fit-content;
@@ -1778,14 +1805,42 @@
 }
 
 .user-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+}
+
+.user-kpi-chip {
+  min-width: 0;
+  justify-content: flex-start;
+  padding: 8px 10px;
+  background: #f8fbff;
+}
+
+.user-kpi-chip span {
+  color: var(--text-soft);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.user-kpi-chip strong {
+  color: var(--text-main);
+  font-size: 0.92rem;
+}
+
+.user-kpi-chip-accent {
+  border-color: rgba(34, 160, 107, 0.18);
+  background: #eefaf4;
+}
+
+.user-kpi-chip-danger {
+  border-color: rgba(180, 35, 35, 0.14);
+  background: #fff0f0;
 }
 
 .user-chart {
   width: 100%;
-  height: 180px;
+  height: 156px;
   overflow: visible;
 }
 
@@ -1826,12 +1881,6 @@
   background: #f0a928;
 }
 
-@media (max-width: 1100px) {
-  .user-kpi-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 640px) {
   .clients-toolbar,
   .clients-filters {
@@ -1839,7 +1888,7 @@
     flex-direction: column;
   }
 
-  .user-kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .user-kpi-chip {
+    width: 100%;
   }
 }
