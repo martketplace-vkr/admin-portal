@@ -1810,8 +1810,18 @@
 }
 
 .user-dashboard .segmented-control {
+  display: inline-flex;
+  width: fit-content;
+  justify-self: end;
+  align-items: center;
   flex-direction: row;
   flex-wrap: nowrap;
+}
+
+.user-dashboard .segmented-control button {
+  flex: 0 0 auto;
+  width: auto;
+  white-space: nowrap;
 }
 
 .user-kpi-grid {

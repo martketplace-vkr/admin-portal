@@ -3,15 +3,11 @@ import { Field } from '../ui'
 export function AdminTariffsPage({
   tariffs,
   tariffForm,
-  assignmentForm,
-  vendorOptions = [],
   busyKeys,
   onTariffFormChange,
-  onAssignmentFormChange,
   onCreateTariff,
   onUpdateTariff,
   onSetDefaultTariff,
-  onAssignVendorTariff,
 }) {
   return (
     <div className="page-grid">
@@ -53,47 +49,6 @@ export function AdminTariffsPage({
       <section className="panel-card">
         <div className="panel-head">
           <div>
-            <h2>Назначить тариф вендору</h2>
-            <p>Если тариф не назначен, используется дефолтный.</p>
-          </div>
-        </div>
-
-        <form className="tariff-form" onSubmit={onAssignVendorTariff}>
-          <Field
-            label="Email вендора"
-            type="email"
-            value={assignmentForm.vendorEmail}
-            onChange={(event) => onAssignmentFormChange((current) => ({ ...current, vendorEmail: event.target.value }))}
-            placeholder="seller@example.com"
-            list="vendor-email-options"
-          />
-          <datalist id="vendor-email-options">
-            {vendorOptions.map((vendor) => (
-              <option key={vendor.id} value={vendor.email} />
-            ))}
-          </datalist>
-          <Field
-            label="Тариф"
-            as="select"
-            value={assignmentForm.tariffId}
-            onChange={(event) => onAssignmentFormChange((current) => ({ ...current, tariffId: event.target.value }))}
-          >
-            <option value="">Выберите тариф</option>
-            {tariffs.map((tariff) => (
-              <option key={tariff.id} value={tariff.id}>
-                {tariff.name} - {formatPercent(tariff.commission_percent ?? tariff.commissionPercent)}
-              </option>
-            ))}
-          </Field>
-          <button className="button button-secondary" type="submit" disabled={busyKeys.tariffAssign}>
-            {busyKeys.tariffAssign ? 'Назначаем...' : 'Назначить'}
-          </button>
-        </form>
-      </section>
-
-      <section className="panel-card">
-        <div className="panel-head">
-          <div>
             <h2>Список тарифов</h2>
           </div>
         </div>
@@ -121,14 +76,12 @@ export function AdminTariffsPage({
 function TariffCard({ tariff, busyKeys, onUpdateTariff, onSetDefaultTariff }) {
   const tariffId = String(tariff.id)
   const commission = tariff.commission_percent ?? tariff.commissionPercent
-  const assignedVendors = tariff.assigned_vendors ?? tariff.assignedVendors ?? 0
 
   return (
     <form className="tariff-card" onSubmit={(event) => onUpdateTariff(event, tariff)}>
       <div className="tariff-card__summary">
         <strong>{tariff.name}</strong>
         <span>{formatPercent(commission)} за успешный заказ</span>
-        <span>{assignedVendors} назначений</span>
       </div>
       <input name="name" className="field-control" defaultValue={tariff.name} aria-label="Название тарифа" />
       <input

@@ -1156,15 +1156,11 @@ export function useAdminPortalController() {
       tariffs: {
         tariffs,
         tariffForm,
-        assignmentForm: tariffAssignmentForm,
-        vendorOptions: vendorDirectory,
         busyKeys,
         onTariffFormChange: setTariffForm,
-        onAssignmentFormChange: setTariffAssignmentForm,
         onCreateTariff: createTariff,
         onUpdateTariff: updateTariff,
         onSetDefaultTariff: setDefaultTariff,
-        onAssignVendorTariff: assignVendorTariff,
       },
       moderationProduct: {
         item: routeModerationItem,
