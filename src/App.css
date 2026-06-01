@@ -968,6 +968,13 @@
   background: #ffffff;
 }
 
+.status-chip {
+  flex: 0 0 auto;
+  min-width: 112px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
 .decision-pill,
 .flag-chip {
   width: fit-content;
