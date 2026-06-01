@@ -109,8 +109,8 @@ export function AdminVendorProfilePage({
       <section className="panel-card panel-editor vendor-profile">
         <div className="panel-head vendor-profile__head">
           <div>
-            <h2>{vendorTitle || vendor.label}</h2>
-            <p>ID: {vendor.vendorId}</p>
+            <h2>ID: {vendor.vendorId}</h2>
+            <p>{vendorTitle || vendor.label}</p>
           </div>
           <div className="vendor-profile__actions">
             <button className="button button-secondary" type="button" onClick={onBack}>
