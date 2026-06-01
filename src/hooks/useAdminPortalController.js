@@ -49,6 +49,8 @@ export function useAdminPortalController() {
   const [accountWallet, setAccountWallet] = useState(null)
   const [accountTransactions, setAccountTransactions] = useState([])
   const [accountFilters, setAccountFilters] = useState({ ownerType: 'system', ownerId: '', currencyCode: '' })
+  const [clients, setClients] = useState([])
+  const [userDashboard, setUserDashboard] = useState(null)
   const [adminOrderFilters, setAdminOrderFilters] = useState({
     paymentStatus: '',
     fulfillmentStatus: '',
@@ -182,7 +184,51 @@ export function useAdminPortalController() {
       setProfileForm(profile)
       setSessionStatus('active')
     })
-    await Promise.allSettled([loadPlatformProducts(token), loadVendorDirectory(token), loadReviewDisputes(token), loadReviewReports(token), loadPaymentTopUps(token), loadUSDTExchangeRate(token), loadAdminOrders(token), loadTariffs(token), loadAdminAccounts(token)])
+    await Promise.allSettled([loadPlatformProducts(token), loadVendorDirectory(token), loadReviewDisputes(token), loadReviewReports(token), loadPaymentTopUps(token), loadUSDTExchangeRate(token), loadAdminOrders(token), loadTariffs(token), loadAdminAccounts(token), loadClients(token), loadUserDashboard(token)])
+  }
+
+  async function loadClients(token = accessToken) {
+    setBusy('clients', true)
+    try {
+      const response = await apiRequest('/api/v1/admin/clients?limit=100', { token })
+      startTransition(() => setClients(response.clients || []))
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy('clients', false)
+    }
+  }
+
+  async function loadClient(clientId, token = accessToken) {
+    return apiRequest(`/api/v1/admin/clients/${encodeURIComponent(clientId)}`, { token })
+  }
+
+  async function updateClientStatus(clientId, status, reason) {
+    setBusy(`client:${clientId}`, true)
+    try {
+      const client = await authedRequest(`/api/v1/admin/clients/${encodeURIComponent(clientId)}/status`, {
+        method: 'PATCH',
+        body: { status, reason },
+      })
+      startTransition(() => setClients((current) => current.map((item) => (String(item.id) === String(client.id) ? { ...item, ...client } : item))))
+      notify(status === 'blocked' ? 'Клиент заблокирован.' : 'Клиент разблокирован.', 'success')
+      void loadUserDashboard()
+      return client
+    } catch (error) {
+      handleError(error)
+      throw error
+    } finally {
+      setBusy(`client:${clientId}`, false)
+    }
+  }
+
+  async function loadUserDashboard(token = accessToken, days = 7) {
+    try {
+      const response = await apiRequest(`/api/v1/admin/analytics/users?days=${days}`, { token })
+      startTransition(() => setUserDashboard(response))
+    } catch (error) {
+      handleError(error)
+    }
   }
 
   async function fetchProfile(token) {
@@ -1051,6 +1097,15 @@ export function useAdminPortalController() {
         onOpenVendors: () => navigate('/vendors'),
         onInspectProduct: openModerationProduct,
         onInspectVendor: openVendorProfile,
+        userDashboard,
+        onUserDashboardPeriodChange: (days) => loadUserDashboard(accessToken, days),
+      },
+      clients: {
+        clients,
+        busyKeys,
+        onReload: () => loadClients(),
+        onLoadClient: loadClient,
+        onUpdateStatus: updateClientStatus,
       },
       moderation: {
         queue: visibleModerationQueue,

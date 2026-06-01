@@ -8,6 +8,7 @@ export const adminNavItems = [
   { path: '/tariffs', page: 'tariffs', label: 'Тарифы' },
   { path: '/categories', page: 'categories', label: 'Категории' },
   { path: '/vendors', page: 'vendors', label: 'Вендоры' },
+  { path: '/clients', page: 'clients', label: 'Клиенты' },
   { path: '/profile', page: 'profile', label: 'Профиль' },
 ]
 

@@ -156,14 +156,6 @@ function formatAccountType(value) {
   return 'Счет'
 }
 
-function formatTransactionType(value) {
-  return toText(value).replace(/^LEDGER_TRANSACTION_TYPE_/, '').replaceAll('_', ' ').toLowerCase() || 'Операция'
-}
-
-function formatDirection(value) {
-  return value === 'ENTRY_DIRECTION_DEBIT' || value === 1 ? '−' : '+'
-}
-
 function formatReference(transaction) {
   const type = toText(transaction.referenceType ?? transaction.reference_type).replace(/^REFERENCE_TYPE_/, '').toLowerCase()
   const id = toText(transaction.referenceId ?? transaction.reference_id)

@@ -11,6 +11,7 @@ import { AdminPaymentsPage } from './pages/AdminPaymentsPage'
 import { AdminProfilePage } from './pages/AdminProfilePage'
 import { AdminTariffsPage } from './pages/AdminTariffsPage'
 import { AdminVendorProfilePage, AdminVendorsPage } from './pages/AdminVendorsPage'
+import { AdminClientsPage } from './pages/AdminClientsPage'
 import { AuthPage } from './pages/AuthPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { ReviewsModerationPage } from './pages/ReviewsModerationPage'
@@ -91,6 +92,10 @@ function renderCurrentPage(controller) {
 
   if (controller.route.page === 'vendors') {
     return <AdminVendorsPage {...controller.pageProps.vendors} />
+  }
+
+  if (controller.route.page === 'clients') {
+    return <AdminClientsPage {...controller.pageProps.clients} />
   }
 
   if (controller.route.page === 'vendorProfile') {

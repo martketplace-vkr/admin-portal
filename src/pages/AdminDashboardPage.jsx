@@ -1,5 +1,6 @@
 import { MetricCard } from '../ui'
 import { formatDateTime, formatPrice, getProductName } from '../helpers'
+import { useState } from 'react'
 
 export function AdminDashboardPage({
   stats,
@@ -10,6 +11,8 @@ export function AdminDashboardPage({
   onOpenVendors,
   onInspectProduct,
   onInspectVendor,
+  userDashboard,
+  onUserDashboardPeriodChange,
 }) {
   const maxBucketValue = Math.max(1, ...moderationBuckets.map((item) => item.value))
 
@@ -28,6 +31,8 @@ export function AdminDashboardPage({
           </button>
         </div>
       </section>
+
+      <UserDashboard dashboard={userDashboard} onPeriodChange={onUserDashboardPeriodChange} />
 
       <section className="metric-grid">
         <MetricCard label="Товаров" value={stats.totalProducts} hint="во всем каталоге" />
@@ -128,5 +133,42 @@ export function AdminDashboardPage({
         </div>
       </section>
     </div>
+  )
+}
+
+function UserDashboard({ dashboard, onPeriodChange }) {
+  const [days, setDays] = useState(7)
+  const trend = dashboard?.trend || []
+  const max = Math.max(1, ...trend.flatMap((item) => [item.new_clients || 0, item.active_clients || 0, item.unique_visitors || 0]))
+  const width = 760
+  const height = 180
+  const points = (key) => trend.map((item, index) => `${trend.length <= 1 ? 0 : (index / (trend.length - 1)) * width},${height - ((item[key] || 0) / max) * height}`).join(' ')
+  function changeDays(value) {
+    setDays(value)
+    onPeriodChange(value)
+  }
+  return (
+    <section className="panel-card user-dashboard">
+      <div className="panel-head">
+        <h2>Пользователи</h2>
+        <div className="segmented-control">
+          {[7, 30].map((value) => <button className={days === value ? 'active' : ''} type="button" key={value} onClick={() => changeDays(value)}>{value} дней</button>)}
+        </div>
+      </div>
+      <div className="user-kpi-grid">
+        <MetricCard label="Всего клиентов" value={dashboard?.total_clients || 0} />
+        <MetricCard label="Новые сегодня" value={dashboard?.new_clients_today || 0} tone="accent" />
+        <MetricCard label="Изменение к вчера" value={`${Number(dashboard?.new_clients_delta_percent || 0).toFixed(1)}%`} />
+        <MetricCard label="Активные сегодня" value={dashboard?.active_clients_today || 0} />
+        <MetricCard label="Заблокированы" value={dashboard?.blocked_clients || 0} tone="danger" />
+        <MetricCard label="Уникальные посетители" value={dashboard?.unique_visitors_today || 0} />
+      </div>
+      <div className="user-chart-legend"><span><i className="line-new" />Регистрации</span><span><i className="line-active" />Активные</span><span><i className="line-visitors" />Посетители</span></div>
+      <svg className="user-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Динамика пользователей">
+        <polyline className="line-new" points={points('new_clients')} />
+        <polyline className="line-active" points={points('active_clients')} />
+        <polyline className="line-visitors" points={points('unique_visitors')} />
+      </svg>
+    </section>
   )
 }

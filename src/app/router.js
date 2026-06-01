@@ -43,6 +43,10 @@ export function readRoute() {
     return { page: 'vendors' }
   }
 
+  if (cleanPath === '/clients' || cleanPath === '/admin/clients') {
+    return { page: 'clients' }
+  }
+
   const vendorProfileMatch = cleanPath.match(/^\/(?:admin\/)?vendors\/([^/]+)$/)
   if (vendorProfileMatch) {
     return { page: 'vendorProfile', vendorId: decodeURIComponent(vendorProfileMatch[1]) }
