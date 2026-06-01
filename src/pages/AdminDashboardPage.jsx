@@ -138,14 +138,34 @@ export function AdminDashboardPage({
 
 function UserDashboard({ dashboard, onPeriodChange }) {
   const [days, setDays] = useState(7)
+  const [activeIndex, setActiveIndex] = useState(null)
   const trend = dashboard?.trend || []
-  const max = Math.max(1, ...trend.flatMap((item) => [item.new_clients || 0, item.active_clients || 0, item.unique_visitors || 0]))
+  const series = [
+    { key: 'new_clients', label: 'Регистрации', color: '#2563eb' },
+    { key: 'active_clients', label: 'Активные', color: '#22a06b' },
+    { key: 'unique_visitors', label: 'Посетители', color: '#f0a928' },
+  ]
   const width = 760
-  const height = 180
-  const points = (key) => trend.map((item, index) => `${trend.length <= 1 ? 0 : (index / (trend.length - 1)) * width},${height - ((item[key] || 0) / max) * height}`).join(' ')
+  const height = 224
+  const padding = { top: 14, right: 14, bottom: 34, left: 42 }
+  const plotWidth = width - padding.left - padding.right
+  const plotHeight = height - padding.top - padding.bottom
+  const max = Math.max(1, ...trend.flatMap((item) => series.map((line) => Number(item[line.key]) || 0)))
+  const tickValues = Array.from({ length: 4 }, (_, index) => (max * (3 - index)) / 3)
+  const labelIndexes = getChartLabelIndexes(trend.length)
+  const x = (index) => padding.left + (trend.length <= 1 ? plotWidth / 2 : (index / (trend.length - 1)) * plotWidth)
+  const y = (value) => padding.top + plotHeight - ((Number(value) || 0) / max) * plotHeight
+  const activePoint = activeIndex === null ? null : trend[activeIndex]
   function changeDays(value) {
     setDays(value)
     onPeriodChange(value)
+  }
+  function handlePointerMove(event) {
+    if (trend.length === 0) return
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const pointerX = ((event.clientX - bounds.left) / bounds.width) * width
+    const relativeX = Math.max(0, Math.min(plotWidth, pointerX - padding.left))
+    setActiveIndex(trend.length === 1 ? 0 : Math.round((relativeX / plotWidth) * (trend.length - 1)))
   }
   return (
     <section className="panel-card user-dashboard">
@@ -163,14 +183,44 @@ function UserDashboard({ dashboard, onPeriodChange }) {
         <UserKpiChip label="Заблокированы" value={dashboard?.blocked_clients || 0} tone="danger" />
         <UserKpiChip label="Уникальные посетители" value={dashboard?.unique_visitors_today || 0} />
       </div>
-      <div className="user-chart-legend"><span><i className="line-new" />Регистрации</span><span><i className="line-active" />Активные</span><span><i className="line-visitors" />Посетители</span></div>
-      <svg className="user-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Динамика пользователей">
-        <polyline className="line-new" points={points('new_clients')} />
-        <polyline className="line-active" points={points('active_clients')} />
-        <polyline className="line-visitors" points={points('unique_visitors')} />
-      </svg>
+      <div className="user-chart-legend">{series.map((line) => <span key={line.key}><i style={{ background: line.color }} />{line.label}</span>)}</div>
+      <div className="user-chart-wrap">
+        <svg className="user-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Динамика пользователей" onPointerMove={handlePointerMove} onPointerLeave={() => setActiveIndex(null)}>
+          {tickValues.map((value) => <g key={value}><line className="user-chart__grid-line" x1={padding.left} x2={width - padding.right} y1={y(value)} y2={y(value)} /><text className="user-chart__axis-label" x={padding.left - 8} y={y(value) + 4} textAnchor="end">{formatNumber(value)}</text></g>)}
+          {series.map((line) => <g key={line.key}><polyline points={trend.map((item, index) => `${x(index)},${y(item[line.key])}`).join(' ')} style={{ stroke: line.color }} />{trend.map((item, index) => <circle className={`user-chart__point ${activeIndex === index ? 'active' : ''}`} cx={x(index)} cy={y(item[line.key])} fill={line.color} key={`${line.key}-${item.day}`} r={activeIndex === index ? 5 : 3} />)}</g>)}
+          {activePoint && <line className="user-chart__hover-line" x1={x(activeIndex)} x2={x(activeIndex)} y1={padding.top} y2={padding.top + plotHeight} />}
+          {labelIndexes.map((index) => <text className="user-chart__axis-label" key={trend[index].day} x={x(index)} y={height - 8} textAnchor="middle">{formatShortDate(trend[index].day)}</text>)}
+          <rect className="user-chart__hit-area" x={padding.left} y={padding.top} width={plotWidth} height={plotHeight} />
+        </svg>
+        {activePoint && <div className={`user-chart-tooltip ${getTooltipAlignment(activeIndex, trend.length)}`} style={{ left: `${(x(activeIndex) / width) * 100}%` }}><strong>{formatFullDate(activePoint.day)}</strong>{series.map((line) => <span key={line.key}><i style={{ background: line.color }} /><em>{line.label}</em><b>{formatNumber(activePoint[line.key])}</b></span>)}</div>}
+      </div>
     </section>
   )
+}
+
+function getChartLabelIndexes(length) {
+  if (length <= 4) return Array.from({ length }, (_, index) => index)
+  return [...new Set([0, Math.round((length - 1) / 3), Math.round(((length - 1) * 2) / 3), length - 1])]
+}
+
+function getTooltipAlignment(index, length) {
+  if (index === 0) return 'align-left'
+  if (index === length - 1) return 'align-right'
+  return ''
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(Number(value) || 0)
+}
+
+function formatShortDate(value) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: 'short' }).format(date)
+}
+
+function formatFullDate(value) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' }).format(date)
 }
 
 function UserKpiChip({ label, value, tone = 'default' }) {
