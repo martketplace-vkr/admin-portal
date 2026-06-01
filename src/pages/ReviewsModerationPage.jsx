@@ -4,6 +4,12 @@ export function ReviewsModerationPage({ reviews, reports, busyKeys, onAccept, on
   return (
     <div className="page-stack">
       <section className="panel-card review-moderation-list">
+        <div className="section-head">
+          <div>
+            <h2>Спорные моменты</h2>
+          </div>
+        </div>
+
         {busyKeys.reviewDisputes ? (
           <div className="empty-panel">Загружаем спорные отзывы...</div>
         ) : reviews.length === 0 ? (

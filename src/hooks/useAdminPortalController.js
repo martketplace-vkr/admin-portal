@@ -111,8 +111,8 @@ export function useAdminPortalController() {
     () => filterAdminOrders(adminOrders, adminOrderFilters),
     [adminOrders, adminOrderFilters],
   )
-  const adminOrderAggregations = useMemo(() => buildOrderAggregations(visibleAdminOrders), [visibleAdminOrders])
-  const adminOrderVendorOptions = useMemo(() => buildVendorOptions(adminOrders), [adminOrders])
+  const adminOrderAggregations = useMemo(() => buildOrderAggregations(visibleAdminOrders, vendorById), [visibleAdminOrders, vendorById])
+  const adminOrderVendorOptions = useMemo(() => buildVendorOptions(adminOrders, vendorById), [adminOrders, vendorById])
 
   const handleBootstrapEffect = useEffectEvent(() => {
     void bootstrap()
@@ -1138,11 +1138,13 @@ export function useAdminPortalController() {
         orders: visibleAdminOrders,
         aggregations: adminOrderAggregations,
         vendorOptions: adminOrderVendorOptions,
+        vendorById,
         filters: adminOrderFilters,
         busyKeys,
         onFilterChange: changeAdminOrderFilter,
         onReload: () => loadAdminOrders(),
         onPaymentStatusChange: updateAdminOrderPaymentStatus,
+        onOpenVendor: openVendorProfile,
       },
       tariffs: {
         tariffs,

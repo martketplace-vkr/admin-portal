@@ -1,4 +1,4 @@
-import { formatPrice, toText } from '../helpers'
+import { formatPrice, formatUSDTPrice, toText } from '../helpers'
 
 export const PAYMENT_STATUS_OPTIONS = [
   ['', 'Все оплаты'],
@@ -70,6 +70,10 @@ export function getOrderTotal(order) {
   return toText(order?.totalPrice ?? order?.total_price)
 }
 
+export function getOrderCurrencyId(order) {
+  return toText(order?.currencyId ?? order?.currency_id ?? order?.payment?.currencyId ?? order?.payment?.currency_id) || '1000'
+}
+
 export function getOrderCreatedAt(order) {
   return order?.createdAt ?? order?.created_at ?? ''
 }
@@ -114,7 +118,7 @@ export function filterAdminOrders(orders, filters = {}) {
     .sort((left, right) => new Date(getOrderCreatedAt(right)).getTime() - new Date(getOrderCreatedAt(left)).getTime())
 }
 
-export function buildVendorOptions(orders) {
+export function buildVendorOptions(orders, vendorById = {}) {
   const vendors = new Map()
 
   for (const order of orders || []) {
@@ -130,14 +134,14 @@ export function buildVendorOptions(orders) {
     { value: '', label: 'Все вендоры' },
     ...[...vendors.entries()]
       .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], 'ru'))
-      .map(([value, count]) => ({ value, label: `Вендор ${value} · ${count}` })),
+      .map(([value, count]) => ({ value, label: `${getVendorLabel(value, vendorById)} · ${count}` })),
   ]
 }
 
-export function buildOrderAggregations(orders) {
+export function buildOrderAggregations(orders, vendorById = {}) {
   const byStatus = new Map()
   const byVendor = new Map()
-  let revenue = 0
+  const revenueByCurrency = {}
 
   for (const order of orders || []) {
     const status = getOrderFulfillmentStatus(order)
@@ -145,15 +149,16 @@ export function buildOrderAggregations(orders) {
 
     byStatus.set(status, (byStatus.get(status) || 0) + 1)
     byVendor.set(vendorId, (byVendor.get(vendorId) || 0) + 1)
-    revenue += parseMoneyAmount(getOrderTotal(order))
+    const currencyId = getOrderCurrencyId(order)
+    revenueByCurrency[currencyId] = (revenueByCurrency[currencyId] || 0) + parseMoneyAmount(getOrderTotal(order))
   }
 
   return {
     total: orders?.length || 0,
     vendorCount: byVendor.size,
-    revenue,
+    revenueByCurrency,
     byStatus: mapAggregationEntries(byStatus, formatFulfillmentStatus),
-    byVendor: mapAggregationEntries(byVendor, (value) => (value === '—' ? 'Без вендора' : `Вендор ${value}`)),
+    byVendor: mapAggregationEntries(byVendor, (value) => (value === '—' ? 'Без вендора' : getVendorLabel(value, vendorById))),
   }
 }
 
@@ -185,6 +190,27 @@ function parseMoneyAmount(value) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-export function formatAggregationRevenue(value) {
-  return formatPrice(value)
+export function formatOrderMoney(value, orderOrCurrencyId) {
+  const currencyId = typeof orderOrCurrencyId === 'string' || typeof orderOrCurrencyId === 'number'
+    ? toText(orderOrCurrencyId)
+    : getOrderCurrencyId(orderOrCurrencyId)
+
+  return currencyId === '2001' ? formatUSDTPrice(value) : formatPrice(value)
+}
+
+export function formatAggregationRevenue(revenueByCurrency) {
+  const totals = Object.entries(revenueByCurrency || {})
+    .filter(([, total]) => total > 0)
+    .map(([currencyId, total]) => formatOrderMoney(total, currencyId))
+
+  return totals.length > 0 ? totals.join(' + ') : formatPrice(0)
+}
+
+export function getVendorLabel(vendorId, vendorById = {}) {
+  const normalizedVendorId = toText(vendorId).trim()
+  if (!normalizedVendorId) {
+    return 'Без вендора'
+  }
+
+  return toText(vendorById[normalizedVendorId]?.email).trim() || `Вендор ${normalizedVendorId}`
 }

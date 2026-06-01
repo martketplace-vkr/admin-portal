@@ -1,6 +1,8 @@
-import { formatDateTime, formatPrice } from '../helpers'
+import { formatDateTime } from '../helpers'
 import {
+  formatAggregationRevenue,
   formatFulfillmentStatus,
+  formatOrderMoney,
   formatPaymentStatus,
   FULFILLMENT_STATUS_OPTIONS,
   getOrderCheckoutId,
@@ -13,6 +15,7 @@ import {
   getOrderTotal,
   getOrderUserId,
   getOrderVendorId,
+  getVendorLabel,
   PAYMENT_STATUS_OPTIONS,
 } from '../hooks/adminOrderModel'
 
@@ -20,11 +23,13 @@ export function AdminOrdersPage({
   orders = [],
   aggregations,
   vendorOptions = [],
+  vendorById = {},
   filters,
   busyKeys,
   onFilterChange,
   onReload,
   onPaymentStatusChange,
+  onOpenVendor,
 }) {
   const maxStatusValue = Math.max(1, ...aggregations.byStatus.map((item) => item.count))
   const maxVendorValue = Math.max(1, ...aggregations.byVendor.map((item) => item.count))
@@ -42,13 +47,13 @@ export function AdminOrdersPage({
         </article>
         <article className="metric-card metric-card-warning">
           <span className="metric-card__label">Сумма выборки</span>
-          <strong className="metric-card__value metric-card__value-small">{formatPrice(aggregations.revenue)}</strong>
+          <strong className="metric-card__value metric-card__value-small">{formatAggregationRevenue(aggregations.revenueByCurrency)}</strong>
         </article>
       </section>
 
       <div className="page-split">
         <AggregationPanel title="Агрегация по статусу заказа" items={aggregations.byStatus} maxValue={maxStatusValue} />
-        <AggregationPanel title="Агрегация по вендору" items={aggregations.byVendor} maxValue={maxVendorValue} />
+        <AggregationPanel title="Агрегация по вендору" items={aggregations.byVendor} maxValue={maxVendorValue} onItemClick={onOpenVendor} />
       </div>
 
       <section className="panel-card orders-board">
@@ -136,7 +141,7 @@ export function AdminOrdersPage({
                       </div>
                       <h3>{getOrderProductName(order)}</h3>
                       <p>
-                        Checkout {getOrderCheckoutId(order) || '—'} · покупатель {getOrderUserId(order) || '—'} · вендор {getOrderVendorId(order) || '—'}
+                        Checkout {getOrderCheckoutId(order) || '—'} · покупатель {getOrderUserId(order) || '—'} · вендор {getVendorLabel(getOrderVendorId(order), vendorById)}
                       </p>
                       <div className="vendor-order-card__meta">
                         <span>Создан: {formatDateTime(getOrderCreatedAt(order))}</span>
@@ -148,7 +153,7 @@ export function AdminOrdersPage({
                   <div className="vendor-order-card__summary">
                     <div>
                       <span>Сумма</span>
-                      <strong>{formatPrice(getOrderTotal(order))}</strong>
+                      <strong>{formatOrderMoney(getOrderTotal(order), order)}</strong>
                     </div>
                   </div>
 
@@ -179,7 +184,7 @@ export function AdminOrdersPage({
   )
 }
 
-function AggregationPanel({ title, items, maxValue }) {
+function AggregationPanel({ title, items, maxValue, onItemClick }) {
   return (
     <section className="panel-card">
       <div className="panel-head">
@@ -195,7 +200,13 @@ function AggregationPanel({ title, items, maxValue }) {
           {items.map((item) => (
             <div key={`${title}-${item.key}`} className="bar-row">
               <div className="bar-row__copy">
-                <strong>{item.label}</strong>
+                {onItemClick && item.key !== '—' ? (
+                  <button className="bar-row__link" type="button" onClick={() => onItemClick(item.key)}>
+                    {item.label}
+                  </button>
+                ) : (
+                  <strong>{item.label}</strong>
+                )}
                 <span>{item.count}</span>
               </div>
               <div className="bar-row__track">

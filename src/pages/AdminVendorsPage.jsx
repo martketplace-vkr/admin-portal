@@ -1,4 +1,4 @@
-import { MetricCard } from '../ui'
+﻿import { MetricCard } from '../ui'
 import { formatDateTime, formatPrice, getProductName } from '../helpers'
 
 export function AdminVendorsPage({
@@ -51,9 +51,9 @@ export function AdminVendorsPage({
                 onClick={() => onOpenVendor(vendor.vendorId)}
               >
                 <div className="vendor-insight-card__top">
-                  <strong>{vendor.label}</strong>
+                  <strong>ID: {vendor.vendorId}</strong>
                 </div>
-                <span className="review-card__meta">ID: {vendor.vendorId}</span>
+                <span className="review-card__meta">{vendor.label}</span>
                 <span className={`decision-pill ${vendor.attentionCount > 0 ? 'decision-pill-review' : 'decision-pill-approved'}`}>
                   {vendor.attentionCount > 0 ? `${vendor.attentionCount} проблемных` : 'Стабильно'}
                 </span>
@@ -158,7 +158,7 @@ export function AdminVendorProfilePage({
 
         <div className="lineup">
           {vendor.items.map((item) => (
-            <article key={item.productId} className="lineup-item">
+            <article key={item.productId} className="lineup-item vendor-product-card">
               <div>
                 <strong>{getProductName(item.product) || 'Без названия'}</strong>
                 <span>

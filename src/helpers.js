@@ -115,6 +115,16 @@ export function formatPrice(value) {
   return normalized || 'Цена не указана'
 }
 
+export function formatUSDTPrice(value) {
+  const parsed = parsePriceValue(value)
+  if (parsed > 0 || parsed === 0) {
+    return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 8 }).format(parsed)} USDT`
+  }
+
+  const normalized = toText(value).trim()
+  return normalized || 'Цена не указана'
+}
+
 export function formatDateTime(value) {
   const normalized = toText(value).trim()
   if (!normalized) {
