@@ -1,9 +1,19 @@
 import { Field } from '../ui'
 import {
   formatPrice,
+  formatUSDTPrice,
   getCategoryId,
+  getProductAcceptsCrypto,
+  getProductAttributes,
+  getProductCostPrice,
+  getProductCryptoPriceUSDT,
+  getProductCryptoPricingMode,
+  getProductDescription,
+  getProductImages,
   getProductName,
+  getProductPrice,
   getStockCount,
+  toText,
 } from '../helpers'
 
 export function AdminModerationPage({
@@ -138,7 +148,9 @@ export function AdminModerationProductPage({
           </div>
         </div>
 
-        <div className="admin-meta-grid">
+        <ModerationProductPreview product={item.product} categoryLabelById={categoryLabelById} />
+
+        <div className="admin-meta-grid moderation-decision-grid">
           <div className="metric-card metric-card-default">
             <span className="metric-card__label">Вендор</span>
             <strong className="metric-card__value metric-card__value-small">{item.vendorLabel}</strong>
@@ -193,6 +205,165 @@ export function AdminModerationProductPage({
       </section>
     </div>
   )
+}
+
+function ModerationProductPreview({ product, categoryLabelById }) {
+  const images = normalizeProductImages(getProductImages(product))
+  const attributes = normalizeProductAttributes(getProductAttributes(product))
+  const acceptsCrypto = getProductAcceptsCrypto(product)
+  const cryptoPricingMode = getProductCryptoPricingMode(product)
+  const cryptoPrice = getProductCryptoPriceUSDT(product)
+  const categoryLabel = categoryLabelById[getCategoryId(product)] || 'Не указана'
+
+  return (
+    <section className="moderation-product-preview">
+      <div className="readonly-field">
+        <span className="field-label">Категория</span>
+        <strong>{categoryLabel}</strong>
+      </div>
+
+      <div className="readonly-field">
+        <span className="field-label">Название</span>
+        <strong>{getProductName(product) || 'Без названия'}</strong>
+      </div>
+
+      <div className="readonly-field readonly-field-block">
+        <span className="field-label">Описание</span>
+        <p>{getProductDescription(product) || 'Описание не указано'}</p>
+      </div>
+
+      <div className="form-split form-split-three">
+        <ReadonlyValue label="Цена" value={formatPrice(getProductPrice(product))} />
+        <ReadonlyValue label="Себестоимость" value={formatOptionalPrice(getProductCostPrice(product))} />
+        <ReadonlyValue label="Остаток" value={getStockCount(product) || '0'} />
+      </div>
+
+      <div className="readonly-field readonly-field-block">
+        <span className="field-label">Оплата в USDT TRC-20</span>
+        <strong>{acceptsCrypto ? 'Включена' : 'Выключена'}</strong>
+        {acceptsCrypto ? (
+          <p>
+            {cryptoPricingMode === 'fixed_usdt'
+              ? `Фиксированная цена: ${formatOptionalUSDTPrice(cryptoPrice)}`
+              : 'Пересчет из рублей по курсу платформы'}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="field">
+        <span className="field-label">Атрибуты</span>
+        {attributes.length === 0 ? (
+          <div className="empty-panel compact-empty">Атрибуты не указаны.</div>
+        ) : (
+          <div className="characteristic-sections">
+            {attributes.map((section, sectionIndex) => (
+              <div className="characteristic-section" key={`${section.title}-${sectionIndex}`}>
+                <div className="characteristic-section__head">
+                  <strong>{section.title || `Раздел ${sectionIndex + 1}`}</strong>
+                </div>
+                <div className="attribute-editor">
+                  {section.attributes.map((attribute, attributeIndex) => (
+                    <div className="attribute-row attribute-row-readonly" key={`${attribute.key}-${attributeIndex}`}>
+                      <span>{attribute.key || 'Параметр'}</span>
+                      <strong>{attribute.value || 'Не указано'}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="field">
+        <span className="field-label">Изображения</span>
+        {images.length === 0 ? (
+          <div className="empty-panel compact-empty">Изображения не загружены.</div>
+        ) : (
+          <div className="image-upload-list">
+            {images.map((image, index) => (
+              <div className={`image-upload-item ${image.isMain ? 'is-main' : ''}`} key={`${image.url}-${index}`}>
+                <div className="image-upload-item__preview">
+                  <img src={image.url} alt={`Изображение товара ${index + 1}`} />
+                </div>
+                <div className="image-upload-item__body">
+                  <strong>{image.isMain ? 'Основное изображение' : `Изображение ${index + 1}`}</strong>
+                  <span>{image.url}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function ReadonlyValue({ label, value }) {
+  return (
+    <div className="readonly-field">
+      <span className="field-label">{label}</span>
+      <strong>{value}</strong>
+    </div>
+  )
+}
+
+function normalizeProductAttributes(attributes) {
+  if (!Array.isArray(attributes)) {
+    return []
+  }
+
+  const looksLikeFlatAttributes = attributes.some((attribute) => !Array.isArray(attribute?.attributes))
+  if (looksLikeFlatAttributes) {
+    return [{
+      title: 'Характеристики',
+      attributes: attributes
+        .map((attribute) => ({
+          key: toText(attribute?.key ?? attribute?.name).trim(),
+          value: toText(attribute?.value).trim(),
+        }))
+        .filter((attribute) => attribute.key || attribute.value),
+    }].filter((section) => section.attributes.length > 0)
+  }
+
+  return attributes
+    .map((section) => ({
+      title: toText(section?.title).trim(),
+      attributes: Array.isArray(section?.attributes)
+        ? section.attributes
+          .map((attribute) => ({
+            key: toText(attribute?.key ?? attribute?.name).trim(),
+            value: toText(attribute?.value).trim(),
+          }))
+          .filter((attribute) => attribute.key || attribute.value)
+        : [],
+    }))
+    .filter((section) => section.title || section.attributes.length > 0)
+}
+
+function normalizeProductImages(images) {
+  if (!Array.isArray(images)) {
+    return []
+  }
+
+  return images
+    .map((image, index) => ({
+      url: toText(image?.url ?? image?.image_url ?? image).trim(),
+      isMain: Boolean(image?.isMain ?? image?.is_main ?? index === 0),
+    }))
+    .filter((image) => image.url)
+    .map((image, index) => ({
+      ...image,
+      isMain: index === 0 || image.isMain,
+    }))
+}
+
+function formatOptionalPrice(value) {
+  return toText(value).trim() ? formatPrice(value) : 'Не указана'
+}
+
+function formatOptionalUSDTPrice(value) {
+  return toText(value).trim() ? formatUSDTPrice(value) : 'Не указана'
 }
 
 function getDecisionLabel(decision) {

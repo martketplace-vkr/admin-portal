@@ -919,6 +919,132 @@
   gap: 12px;
 }
 
+.form-split-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.moderation-product-preview,
+.characteristic-sections,
+.attribute-editor,
+.image-upload-list {
+  display: grid;
+  gap: 12px;
+}
+
+.moderation-product-preview {
+  padding: 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.readonly-field,
+.characteristic-section,
+.image-upload-item {
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.readonly-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.readonly-field strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.readonly-field p {
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.readonly-field-block {
+  align-content: start;
+}
+
+.characteristic-section {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.characteristic-section__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.attribute-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.attribute-row-readonly {
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(248, 250, 255, 0.96);
+}
+
+.attribute-row-readonly span {
+  color: var(--text-soft);
+}
+
+.image-upload-item {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+}
+
+.image-upload-item.is-main {
+  border-color: #8db2ff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+}
+
+.image-upload-item__preview {
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #f3f6fb;
+}
+
+.image-upload-item__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-upload-item__body {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.image-upload-item__body span {
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.moderation-decision-grid {
+  margin-top: 4px;
+}
+
 .tariff-form,
 .tariff-list {
   display: grid;
@@ -1291,6 +1417,9 @@
   }
 
   .form-split,
+  .form-split-three,
+  .attribute-row,
+  .image-upload-item,
   .hero-strip {
     grid-template-columns: 1fr;
   }

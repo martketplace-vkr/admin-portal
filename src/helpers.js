@@ -69,6 +69,10 @@ export function getProductPrice(product) {
   return toText(product?.price)
 }
 
+export function getProductCostPrice(product) {
+  return toText(product?.costPrice ?? product?.cost_price)
+}
+
 export function getStockCount(product) {
   return toText(product?.stockCount ?? product?.stock_count)
 }
@@ -83,6 +87,18 @@ export function getProductAttributes(product) {
 
 export function getProductUpdatedAt(product) {
   return toText(product?.updatedAt ?? product?.updated_at ?? product?.createdAt ?? product?.created_at)
+}
+
+export function getProductAcceptsCrypto(product) {
+  return Boolean(product?.acceptsCrypto ?? product?.accepts_crypto)
+}
+
+export function getProductCryptoPricingMode(product) {
+  return toText(product?.cryptoPricingMode ?? product?.crypto_pricing_mode) || 'disabled'
+}
+
+export function getProductCryptoPriceUSDT(product) {
+  return toText(product?.cryptoPriceUsdt ?? product?.crypto_price_usdt)
 }
 
 export function parsePriceValue(value) {
