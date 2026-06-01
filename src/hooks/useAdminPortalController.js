@@ -7,6 +7,7 @@ import {
   buildAdminStats,
   buildModerationBuckets,
   buildModerationQueue,
+  buildVendorLabel,
   buildVendorInsights,
   getModerationToast,
   LOADING_COPY,
@@ -40,9 +41,10 @@ export function useAdminPortalController() {
   const [paymentTopUps, setPaymentTopUps] = useState([])
   const [adminOrders, setAdminOrders] = useState([])
   const [tariffs, setTariffs] = useState([])
+  const [vendorDirectory, setVendorDirectory] = useState([])
   const [vendorTariffs, setVendorTariffs] = useState({})
   const [tariffForm, setTariffForm] = useState({ name: '', commissionPercent: '5' })
-  const [tariffAssignmentForm, setTariffAssignmentForm] = useState({ vendorId: '', tariffId: '' })
+  const [tariffAssignmentForm, setTariffAssignmentForm] = useState({ vendorEmail: '', tariffId: '' })
   const [accountWallet, setAccountWallet] = useState(null)
   const [accountTransactions, setAccountTransactions] = useState([])
   const [accountFilters, setAccountFilters] = useState({ ownerType: 'system', ownerId: '', currencyCode: '' })
@@ -86,7 +88,9 @@ export function useAdminPortalController() {
   const stats = useMemo(() => buildAdminStats(platformProducts, moderationQueue), [platformProducts, moderationQueue])
   const moderationBuckets = useMemo(() => buildModerationBuckets(stats), [stats])
   const attentionProducts = useMemo(() => moderationQueue.filter((item) => item.attention).slice(0, 6), [moderationQueue])
-  const vendorInsights = useMemo(() => buildVendorInsights(moderationQueue), [moderationQueue])
+  const vendorById = useMemo(() => buildVendorMap(vendorDirectory), [vendorDirectory])
+  const vendorByEmail = useMemo(() => buildVendorEmailMap(vendorDirectory), [vendorDirectory])
+  const vendorInsights = useMemo(() => buildVendorInsights(moderationQueue, vendorById), [moderationQueue, vendorById])
   const visibleVendorInsights = useMemo(
     () => vendorInsights.filter((item) => matchesVendorInsight(item, deferredVendorSearch)),
     [vendorInsights, deferredVendorSearch],
@@ -177,7 +181,7 @@ export function useAdminPortalController() {
       setProfileForm(profile)
       setSessionStatus('active')
     })
-    await Promise.allSettled([loadPlatformProducts(token), loadReviewDisputes(token), loadReviewReports(token), loadPaymentTopUps(token), loadAdminOrders(token), loadTariffs(token), loadAdminAccounts(token)])
+    await Promise.allSettled([loadPlatformProducts(token), loadVendorDirectory(token), loadReviewDisputes(token), loadReviewReports(token), loadPaymentTopUps(token), loadAdminOrders(token), loadTariffs(token), loadAdminAccounts(token)])
   }
 
   async function fetchProfile(token) {
@@ -358,6 +362,17 @@ export function useAdminPortalController() {
       handleError(error)
     } finally {
       setBusy('tariffs', false)
+    }
+  }
+
+  async function loadVendorDirectory(token = accessToken) {
+    try {
+      const response = await apiRequest('/api/v1/admin/auth/vendors', { token })
+      startTransition(() => {
+        setVendorDirectory((response.vendors || []).map(normalizeVendorDirectoryItem).filter(Boolean))
+      })
+    } catch (error) {
+      handleError(error)
     }
   }
 
@@ -804,10 +819,10 @@ export function useAdminPortalController() {
       eventOrVendorId.preventDefault()
     }
 
-    const vendorId = toText(isSubmitEvent ? tariffAssignmentForm.vendorId : eventOrVendorId).trim()
+    const vendorId = resolveVendorId(isSubmitEvent ? tariffAssignmentForm.vendorEmail : eventOrVendorId)
     const tariffId = toText(isSubmitEvent ? tariffAssignmentForm.tariffId : maybeTariffId).trim()
     if (!vendorId || !tariffId) {
-      notify('Укажите vendor_id и тариф.', 'warning')
+      notify('Укажите email вендора и тариф.', 'warning')
       return
     }
 
@@ -821,7 +836,7 @@ export function useAdminPortalController() {
       startTransition(() => {
         setVendorTariffs((current) => ({ ...current, [vendorId]: response.tariff || null }))
         if (isSubmitEvent) {
-          setTariffAssignmentForm({ vendorId: '', tariffId: '' })
+          setTariffAssignmentForm({ vendorEmail: '', tariffId: '' })
         }
       })
       await loadTariffs()
@@ -832,6 +847,20 @@ export function useAdminPortalController() {
       setBusy('tariffAssign', false)
       setBusy(`vendorTariff-${vendorId}`, false)
     }
+  }
+
+  function resolveVendorId(value) {
+    const raw = toText(value).trim()
+    const vendor = vendorByEmail[raw.toLowerCase()]
+    if (vendor?.id) {
+      return vendor.id
+    }
+
+    if (/^\d+$/.test(raw)) {
+      return raw
+    }
+
+    return ''
   }
 
   function changeAdminOrderFilter(key, value) {
@@ -1031,6 +1060,7 @@ export function useAdminPortalController() {
         tariffs,
         tariffForm,
         assignmentForm: tariffAssignmentForm,
+        vendorOptions: vendorDirectory,
         busyKeys,
         onTariffFormChange: setTariffForm,
         onAssignmentFormChange: setTariffAssignmentForm,
@@ -1057,6 +1087,7 @@ export function useAdminPortalController() {
       },
       vendors: {
         vendors: visibleVendorInsights,
+        vendorOptions: vendorDirectory,
         search: vendorSearch,
         onSearchChange: setVendorSearch,
         onOpenVendor: openVendorProfile,
@@ -1064,6 +1095,7 @@ export function useAdminPortalController() {
       vendorProfile: {
         vendor: routeVendorInsight,
         vendorId: route.vendorId,
+        vendorTitle: buildVendorLabel(route.vendorId, vendorById[normalizeVendorKey(route.vendorId)]),
         tariffs,
         currentTariff: vendorTariffs[normalizeVendorKey(route.vendorId)] || null,
         busyKeys,
@@ -1095,4 +1127,28 @@ function getAccessTokenFromResponse(response, failureMessage, operation) {
 
   console.error(`Missing access token in ${operation} response.`, response)
   throw new Error(failureMessage)
+}
+
+function normalizeVendorDirectoryItem(item) {
+  const id = toText(item?.id ?? item?.vendor_id ?? item?.vendorId).trim()
+  const email = toText(item?.email).trim()
+  if (!id || !email) {
+    return null
+  }
+
+  return { id, email }
+}
+
+function buildVendorMap(vendors) {
+  return vendors.reduce((accumulator, vendor) => {
+    accumulator[vendor.id] = vendor
+    return accumulator
+  }, {})
+}
+
+function buildVendorEmailMap(vendors) {
+  return vendors.reduce((accumulator, vendor) => {
+    accumulator[vendor.email.toLowerCase()] = vendor
+    return accumulator
+  }, {})
 }

@@ -3,6 +3,7 @@ import { formatDateTime, formatPrice, getProductName } from '../helpers'
 
 export function AdminVendorsPage({
   vendors,
+  vendorOptions = [],
   search,
   onSearchChange,
   onOpenVendor,
@@ -21,13 +22,19 @@ export function AdminVendorsPage({
         </div>
 
         <label className="search-shell">
-          <span>Поиск по vendor_id</span>
+          <span>Поиск по email вендора</span>
           <input
             type="search"
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="vendor_id или внутренний ярлык"
+            placeholder="seller@example.com"
+            list="vendor-list-email-options"
           />
+          <datalist id="vendor-list-email-options">
+            {vendorOptions.map((vendor) => (
+              <option key={vendor.id} value={vendor.email} />
+            ))}
+          </datalist>
         </label>
 
         <div className="review-stack">
@@ -46,6 +53,7 @@ export function AdminVendorsPage({
                 <div className="vendor-insight-card__top">
                   <strong>{vendor.label}</strong>
                 </div>
+                <span className="review-card__meta">ID: {vendor.vendorId}</span>
                 <span className={`decision-pill ${vendor.attentionCount > 0 ? 'decision-pill-review' : 'decision-pill-approved'}`}>
                   {vendor.attentionCount > 0 ? `${vendor.attentionCount} проблемных` : 'Стабильно'}
                 </span>
@@ -68,6 +76,7 @@ export function AdminVendorsPage({
 export function AdminVendorProfilePage({
   vendor,
   vendorId,
+  vendorTitle,
   tariffs = [],
   currentTariff,
   busyKeys = {},
@@ -85,7 +94,7 @@ export function AdminVendorProfilePage({
             </div>
           </div>
           <div className="empty-panel">
-            <h3>Нет данных по vendor_id {vendorId}</h3>
+            <h3>Нет данных по вендору {vendorId}</h3>
             <button className="button button-secondary" type="button" onClick={onBack}>
               Вернуться к списку
             </button>
@@ -98,9 +107,10 @@ export function AdminVendorProfilePage({
   return (
     <div className="page-grid">
       <section className="panel-card panel-editor vendor-profile">
-        <div className="panel-head">
+        <div className="panel-head vendor-profile__head">
           <div>
-            <h2>{vendor.label}</h2>
+            <h2>{vendorTitle || vendor.label}</h2>
+            <p>ID: {vendor.vendorId}</p>
           </div>
           <div className="vendor-profile__actions">
             <button className="button button-secondary" type="button" onClick={onBack}>

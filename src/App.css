@@ -642,6 +642,32 @@
   gap: 10px;
 }
 
+.vendor-profile__head {
+  align-items: flex-start;
+}
+
+.vendor-profile__head p {
+  margin: 8px 0 0;
+  color: var(--text-soft);
+}
+
+.vendor-tariff-panel {
+  gap: 14px;
+  margin-top: 8px;
+  padding: 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.vendor-tariff-panel p {
+  margin: 4px 0 0;
+}
+
+.vendor-tariff-panel__select {
+  margin-top: 4px;
+}
+
 .review-card,
 .vendor-insight-card,
 .review-card__top,

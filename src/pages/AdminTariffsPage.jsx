@@ -4,6 +4,7 @@ export function AdminTariffsPage({
   tariffs,
   tariffForm,
   assignmentForm,
+  vendorOptions = [],
   busyKeys,
   onTariffFormChange,
   onAssignmentFormChange,
@@ -59,13 +60,18 @@ export function AdminTariffsPage({
 
         <form className="tariff-form" onSubmit={onAssignVendorTariff}>
           <Field
-            label="Vendor ID"
-            type="number"
-            min="1"
-            value={assignmentForm.vendorId}
-            onChange={(event) => onAssignmentFormChange((current) => ({ ...current, vendorId: event.target.value }))}
-            placeholder="123"
+            label="Email вендора"
+            type="email"
+            value={assignmentForm.vendorEmail}
+            onChange={(event) => onAssignmentFormChange((current) => ({ ...current, vendorEmail: event.target.value }))}
+            placeholder="seller@example.com"
+            list="vendor-email-options"
           />
+          <datalist id="vendor-email-options">
+            {vendorOptions.map((vendor) => (
+              <option key={vendor.id} value={vendor.email} />
+            ))}
+          </datalist>
           <Field
             label="Тариф"
             as="select"

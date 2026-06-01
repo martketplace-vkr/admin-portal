@@ -173,14 +173,16 @@ export function buildModerationQueue(products, moderationState, categoryLabelByI
     .sort(sortModerationItems)
 }
 
-export function buildVendorInsights(moderationQueue) {
+export function buildVendorInsights(moderationQueue, vendorById = {}) {
   const grouped = new Map()
 
   for (const item of moderationQueue) {
+    const vendorInfo = vendorById[item.vendorId] || null
     if (!grouped.has(item.vendorId)) {
       grouped.set(item.vendorId, {
         vendorId: item.vendorId,
-        label: item.vendorLabel,
+        email: toText(vendorInfo?.email),
+        label: buildVendorLabel(item.vendorId, vendorInfo),
         totalProducts: 0,
         totalStock: 0,
         inventoryValue: 0,
@@ -253,7 +255,7 @@ export function matchesVendorInsight(item, query) {
     return true
   }
 
-  return `${item.vendorId} ${item.label}`.toLowerCase().includes(normalizedQuery)
+  return `${item.vendorId} ${item.email} ${item.label}`.toLowerCase().includes(normalizedQuery)
 }
 
 export function normalizeVendorKey(value) {
@@ -355,7 +357,12 @@ function buildProductQuality(product) {
   }
 }
 
-function buildVendorLabel(vendorId) {
+export function buildVendorLabel(vendorId, vendorInfo = null) {
+  const email = toText(vendorInfo?.email).trim()
+  if (email) {
+    return email
+  }
+
   const normalized = toText(vendorId).trim()
   return normalized ? `Вендор ${normalized}` : 'Вендор без vendor_id'
 }
