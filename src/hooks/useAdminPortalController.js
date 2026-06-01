@@ -39,6 +39,7 @@ export function useAdminPortalController() {
   const [reviewDisputes, setReviewDisputes] = useState([])
   const [reviewReports, setReviewReports] = useState([])
   const [paymentTopUps, setPaymentTopUps] = useState([])
+  const [exchangeRateForm, setExchangeRateForm] = useState({ rubPerUsdt: '' })
   const [adminOrders, setAdminOrders] = useState([])
   const [tariffs, setTariffs] = useState([])
   const [vendorDirectory, setVendorDirectory] = useState([])
@@ -181,7 +182,7 @@ export function useAdminPortalController() {
       setProfileForm(profile)
       setSessionStatus('active')
     })
-    await Promise.allSettled([loadPlatformProducts(token), loadVendorDirectory(token), loadReviewDisputes(token), loadReviewReports(token), loadPaymentTopUps(token), loadAdminOrders(token), loadTariffs(token), loadAdminAccounts(token)])
+    await Promise.allSettled([loadPlatformProducts(token), loadVendorDirectory(token), loadReviewDisputes(token), loadReviewReports(token), loadPaymentTopUps(token), loadUSDTExchangeRate(token), loadAdminOrders(token), loadTariffs(token), loadAdminAccounts(token)])
   }
 
   async function fetchProfile(token) {
@@ -273,6 +274,44 @@ export function useAdminPortalController() {
       handleError(error)
     } finally {
       setBusy('paymentTopUps', false)
+    }
+  }
+
+  async function loadUSDTExchangeRate(token = accessToken) {
+    setBusy('exchangeRate', true)
+
+    try {
+      const response = await apiRequest('/api/v1/admin/catalog/exchange-rates/usdt-trc20', { token })
+      setExchangeRateForm({ rubPerUsdt: toText(response.rate?.rubPerUsdt ?? response.rate?.rub_per_usdt) })
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 404)) {
+        handleError(error)
+      }
+    } finally {
+      setBusy('exchangeRate', false)
+    }
+  }
+
+  async function updateUSDTExchangeRate(event) {
+    event.preventDefault()
+    const rubPerUsdt = exchangeRateForm.rubPerUsdt.trim()
+    if (!rubPerUsdt) {
+      notify('Укажите курс USDT.', 'warning')
+      return
+    }
+
+    setBusy('exchangeRateSave', true)
+    try {
+      const response = await authedRequest('/api/v1/admin/catalog/exchange-rates/usdt-trc20', {
+        method: 'PUT',
+        body: { rub_per_usdt: rubPerUsdt },
+      })
+      setExchangeRateForm({ rubPerUsdt: toText(response.rate?.rubPerUsdt ?? response.rate?.rub_per_usdt) })
+      notify('Курс USDT сохранен.', 'success')
+    } catch (error) {
+      handleError(error)
+    } finally {
+      setBusy('exchangeRateSave', false)
     }
   }
 
@@ -1034,8 +1073,11 @@ export function useAdminPortalController() {
       },
       payments: {
         topUps: paymentTopUps,
+        exchangeRateForm,
         busyKeys,
-        onReload: () => loadPaymentTopUps(),
+        onExchangeRateChange: setExchangeRateForm,
+        onExchangeRateSave: updateUSDTExchangeRate,
+        onReload: () => Promise.allSettled([loadPaymentTopUps(), loadUSDTExchangeRate()]),
         onConfirm: confirmPaymentTopUp,
       },
       accounts: {
