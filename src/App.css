@@ -39,8 +39,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 18px;
+  gap: 10px;
   padding: 16px;
 }
 
@@ -69,7 +68,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  min-width: 220px;
+  min-width: 210px;
   padding: 4px;
   text-align: left;
 }
@@ -122,9 +121,10 @@
 
 .sidebar-nav {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+  justify-content: center;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -133,8 +133,9 @@
   align-items: center;
   justify-content: center;
   min-height: 40px;
-  padding: 8px 14px;
+  padding: 8px;
   border-radius: 28px;
+  font-size: 0.9rem;
   text-align: center;
   transition:
     transform 160ms ease,
@@ -179,6 +180,10 @@
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.vendor-nav__actions {
+  flex: 0 0 auto;
 }
 
 .logout-pill {
@@ -846,6 +851,36 @@
   gap: 12px;
 }
 
+.tariff-form,
+.tariff-list {
+  display: grid;
+  gap: 12px;
+}
+
+.tariff-form .button {
+  justify-self: start;
+}
+
+.tariff-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+}
+
+.tariff-card__summary,
+.tariff-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.tariff-card__summary span {
+  color: var(--text-soft);
+}
+
 .button {
   appearance: none;
   display: inline-flex;
@@ -1099,6 +1134,15 @@
   .button {
     width: 100%;
     justify-content: center;
+  }
+
+  .vendor-sidebar,
+  .sidebar-nav {
+    flex-wrap: wrap;
+  }
+
+  .sidebar-nav {
+    justify-content: flex-start;
   }
 
   .icon-button {

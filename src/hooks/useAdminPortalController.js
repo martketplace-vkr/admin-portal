@@ -182,7 +182,7 @@ export function useAdminPortalController() {
 
   async function fetchProfile(token) {
     try {
-      const response = await apiRequest('/api/v1/users/me', { token })
+      const response = await apiRequest('/api/v1/admin/auth/me', { token })
       return normalizeProfile(response)
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
