@@ -167,7 +167,6 @@ function UserDashboard({ dashboard, onPeriodChange }) {
       <div className="user-kpi-grid">
         <UserKpiChip label="Всего клиентов" value={dashboard?.total_clients || 0} />
         <UserKpiChip label="Новые сегодня" value={dashboard?.new_clients_today || 0} tone="accent" />
-        <UserKpiChip label="Изменение к вчера" value={`${Number(dashboard?.new_clients_delta_percent || 0).toFixed(1)}%`} />
         <UserKpiChip label="Активные сегодня" value={dashboard?.active_clients_today || 0} />
         <UserKpiChip label="Заблокированы" value={dashboard?.blocked_clients || 0} tone="danger" />
         <UserKpiChip label="Уникальные посетители" value={dashboard?.unique_visitors_today || 0} />

@@ -437,6 +437,12 @@
   padding: 16px;
 }
 
+.lineup-item > div {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
 .lineup-item-stack {
   align-items: flex-start;
   justify-content: flex-start;
